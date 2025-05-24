@@ -7,40 +7,67 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { BookOpen } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const Login = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Mock login logic - replace with Supabase authentication
-    if (formData.email && formData.password) {
-      // Simulate different user types for demo
-      if (formData.email.includes('admin') || formData.email.includes('recruiter')) {
-        toast({
-          title: "Welcome back!",
-          description: "Redirecting to admin dashboard..."
-        });
-        navigate('/admin-dashboard');
-      } else {
-        toast({
-          title: "Welcome back!",
-          description: "Redirecting to student dashboard..."
-        });
-        navigate('/student-dashboard');
-      }
-    } else {
+    if (!formData.email || !formData.password) {
       toast({
         title: "Error",
         description: "Please fill in all fields",
         variant: "destructive"
       });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        // Get user profile to determine role
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', data.user.id)
+          .single();
+
+        toast({
+          title: "Welcome back!",
+          description: "Login successful"
+        });
+
+        // Redirect based on role
+        if (profile?.role === 'admin') {
+          navigate('/admin-dashboard');
+        } else {
+          navigate('/student-dashboard');
+        }
+      }
+    } catch (error: any) {
+      toast({
+        title: "Login Failed",
+        description: error.message || "Invalid email or password",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -106,8 +133,9 @@ const Login = () => {
                 type="submit" 
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5"
                 size="lg"
+                disabled={isLoading}
               >
-                Sign In
+                {isLoading ? 'Signing In...' : 'Sign In'}
               </Button>
             </form>
             
@@ -119,14 +147,6 @@ const Login = () => {
                     Create one here
                   </Link>
                 </p>
-              </div>
-              
-              {/* Demo credentials */}
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-600 font-medium mb-2">Demo Credentials:</p>
-                <p className="text-xs text-gray-600">Student: student@demo.com</p>
-                <p className="text-xs text-gray-600">Recruiter: admin@demo.com</p>
-                <p className="text-xs text-gray-600">Password: any password</p>
               </div>
             </div>
           </CardContent>
