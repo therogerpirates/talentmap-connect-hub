@@ -1,8 +1,10 @@
-
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, FileText, CheckCircle, X, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUpdateStudentData } from '@/hooks/useStudentData';
 
 interface ResumeUploadProps {
   onUploadSuccess: (success: boolean) => void;
@@ -15,6 +17,8 @@ const ResumeUpload = ({ onUploadSuccess, hasExistingResume = false }: ResumeUplo
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const updateStudentData = useUpdateStudentData();
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -68,14 +72,33 @@ const ResumeUpload = ({ onUploadSuccess, hasExistingResume = false }: ResumeUplo
   };
 
   const handleUpload = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile || !user) return;
 
     setUploadStatus('uploading');
     
-    // Simulate upload process
     try {
-      // Here you would integrate with Supabase Storage
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Create unique filename
+      const fileExt = selectedFile.name.split('.').pop();
+      const fileName = `${user.id}/resume.${fileExt}`;
+
+      // Upload file to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('resumes')
+        .upload(fileName, selectedFile, {
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data } = supabase.storage
+        .from('resumes')
+        .getPublicUrl(fileName);
+
+      // Update student record with resume URL
+      await updateStudentData.mutateAsync({
+        resume_url: data.publicUrl
+      });
       
       setUploadStatus('success');
       onUploadSuccess(true);
@@ -84,11 +107,12 @@ const ResumeUpload = ({ onUploadSuccess, hasExistingResume = false }: ResumeUplo
         title: "Upload Successful!",
         description: "Your resume has been uploaded and is now available to recruiters."
       });
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Upload error:', error);
       setUploadStatus('error');
       toast({
         title: "Upload Failed",
-        description: "There was an error uploading your resume. Please try again.",
+        description: error.message || "There was an error uploading your resume. Please try again.",
         variant: "destructive"
       });
     }

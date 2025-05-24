@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,9 +8,11 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { BookOpen, Users, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const Register = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const initialRole = searchParams.get('role') || 'student';
   const [role, setRole] = useState(initialRole);
   const [formData, setFormData] = useState({
@@ -19,9 +21,10 @@ const Register = () => {
     confirmPassword: '',
     fullName: ''
   });
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (formData.password !== formData.confirmPassword) {
@@ -33,13 +36,42 @@ const Register = () => {
       return;
     }
 
-    // Here you would integrate with Supabase for actual registration
-    toast({
-      title: "Registration Successful!",
-      description: `Welcome to TalentMap! Please connect Supabase to enable full functionality.`
-    });
-    
-    console.log('Registration data:', { ...formData, role });
+    setIsLoading(true);
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.fullName,
+            role: role
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        toast({
+          title: "Registration Successful!",
+          description: "Please check your email to confirm your account."
+        });
+        
+        // Redirect based on role
+        setTimeout(() => {
+          navigate(role === 'admin' ? '/admin-dashboard' : '/student-dashboard');
+        }, 2000);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Registration Failed",
+        description: error.message || "An error occurred during registration",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -167,8 +199,9 @@ const Register = () => {
                 type="submit" 
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5"
                 size="lg"
+                disabled={isLoading}
               >
-                Create Account
+                {isLoading ? 'Creating Account...' : 'Create Account'}
               </Button>
             </form>
             

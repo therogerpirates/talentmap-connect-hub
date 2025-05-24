@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,50 +5,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { BookOpen, Search, Users, FileText, LogOut, Filter } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { useStudentsSearch } from '@/hooks/useStudentsSearch';
 import StudentCard from '@/components/StudentCard';
 
 const AdminDashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const { signOut, profile } = useAuth();
   const { toast } = useToast();
-
-  // Mock student data for demonstration
-  const mockStudents = [
-    {
-      id: 1,
-      name: 'Alice Johnson',
-      year: '4th Year',
-      department: 'Computer Science',
-      skills: ['React', 'Python', 'Machine Learning', 'Data Analysis'],
-      gpa: '3.8',
-      resumeUrl: '#',
-      email: 'alice.johnson@university.edu',
-      matchScore: 95
-    },
-    {
-      id: 2,
-      name: 'Bob Chen',
-      year: '3rd Year',
-      department: 'Engineering',
-      skills: ['JavaScript', 'Node.js', 'Database Design', 'AWS'],
-      gpa: '3.6',
-      resumeUrl: '#',
-      email: 'bob.chen@university.edu',
-      matchScore: 87
-    },
-    {
-      id: 3,
-      name: 'Carol Martinez',
-      year: 'Graduate',
-      department: 'Business Administration',
-      skills: ['Project Management', 'Data Analytics', 'Marketing', 'Leadership'],
-      gpa: '3.9',
-      resumeUrl: '#',
-      email: 'carol.martinez@university.edu',
-      matchScore: 82
-    }
-  ];
+  
+  const { data: searchResults, refetch: performSearch, isFetching: isSearching } = useStudentsSearch(searchQuery);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,17 +27,20 @@ const AdminDashboard = () => {
       return;
     }
 
-    setIsSearching(true);
+    performSearch();
     
-    // Simulate AI search with delay
-    setTimeout(() => {
-      setSearchResults(mockStudents);
-      setIsSearching(false);
-      toast({
-        title: "Search Complete!",
-        description: `Found ${mockStudents.length} matching candidates. Connect Supabase for real AI-powered search.`
-      });
-    }, 1500);
+    toast({
+      title: "Search Complete!",
+      description: `Found ${searchResults?.length || 0} matching candidates.`
+    });
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast({
+      title: "Signed out successfully",
+      description: "You have been logged out of your account."
+    });
   };
 
   return (
@@ -88,13 +56,13 @@ const AdminDashboard = () => {
           </Link>
           
           <div className="flex items-center space-x-4">
-            <span className="text-sm text-gray-600">Recruiter Dashboard</span>
-            <Link to="/login">
-              <Button variant="ghost" size="sm">
-                <LogOut className="w-4 h-4 mr-2" />
-                Logout
-              </Button>
-            </Link>
+            <span className="text-sm text-gray-600">
+              Welcome, {profile?.full_name} (Recruiter)
+            </span>
+            <Button variant="ghost" size="sm" onClick={handleSignOut}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
           </div>
         </div>
       </header>
@@ -220,7 +188,7 @@ const AdminDashboard = () => {
           </Card>
 
           {/* Search Results */}
-          {searchResults.length > 0 && (
+          {searchResults && searchResults.length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-gray-900">
@@ -241,7 +209,7 @@ const AdminDashboard = () => {
           )}
 
           {/* Empty State */}
-          {searchResults.length === 0 && !isSearching && (
+          {(!searchResults || searchResults.length === 0) && !isSearching && (
             <Card>
               <CardContent className="p-12 text-center">
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
