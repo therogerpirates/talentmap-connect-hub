@@ -12,27 +12,33 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string | null
+          department: string | null
           email: string
           full_name: string
           id: string
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string | null
+          year: string | null
         }
         Insert: {
           created_at?: string | null
+          department?: string | null
           email: string
           full_name: string
           id: string
           role: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
+          year?: string | null
         }
         Update: {
           created_at?: string | null
+          department?: string | null
           email?: string
           full_name?: string
           id?: string
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
+          year?: string | null
         }
         Relationships: []
       }

@@ -10,19 +10,22 @@ export const useStudentsSearch = (searchQuery?: string) => {
         .from('students')
         .select(`
           *,
-          profiles(full_name, email)
+          profiles!inner(full_name, email)
         `);
 
       if (searchQuery) {
-        // For now, we'll do a simple text search. Later this can be enhanced with vector similarity
+        // Search in department and skills
         query = query.or(`department.ilike.%${searchQuery}%,skills.cs.{${searchQuery}}`);
       }
 
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        console.error('Search error:', error);
+        throw error;
+      }
 
       // Transform data to match StudentCard interface
-      return data.map(student => ({
+      return data?.map(student => ({
         id: parseInt(student.id),
         name: student.profiles?.full_name || 'Unknown',
         year: student.year || 'Not specified',
@@ -32,7 +35,7 @@ export const useStudentsSearch = (searchQuery?: string) => {
         resumeUrl: student.resume_url || '',
         email: student.profiles?.email || '',
         matchScore: searchQuery ? Math.floor(Math.random() * 30) + 70 : 85 // Mock score for now
-      }));
+      })) || [];
     },
     enabled: false, // Only run when explicitly called
   });

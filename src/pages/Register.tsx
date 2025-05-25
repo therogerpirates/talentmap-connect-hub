@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -50,48 +51,24 @@ const Register = () => {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
+        options: {
+          data: {
+            full_name: formData.fullName,
+            role: role
+          }
+        }
       });
 
       if (authError) throw authError;
 
       if (authData.user) {
-        // Ensure the role is set correctly based on the registration type
-        const userRole = role === 'admin' ? 'admin' : 'student';
-        
-        console.log('Creating profile with data:', {
-          id: authData.user.id,
-          full_name: formData.fullName,
-          role: userRole,
-          email: formData.email
-        });
-
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: authData.user.id,
-            full_name: formData.fullName,
-            role: userRole,
-            email: formData.email,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .select()
-          .single();
-
-        if (profileError) {
-          console.error('Profile creation error:', profileError);
-          throw profileError;
-        }
-
-        console.log('Profile created successfully:', profileData);
-
         toast({
           title: "Success!",
-          description: "Your account has been created successfully."
+          description: "Your account has been created successfully. Please check your email to verify your account."
         });
 
         // Redirect based on role
-        navigate(userRole === 'admin' ? '/admin-dashboard' : '/student-dashboard');
+        navigate(role === 'admin' ? '/admin-dashboard' : '/student-dashboard');
       }
     } catch (error: any) {
       console.error('Registration error:', error);

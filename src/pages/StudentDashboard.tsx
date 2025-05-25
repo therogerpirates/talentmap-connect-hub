@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -8,93 +9,58 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { BookOpen, Upload, User, FileText, CheckCircle, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import ResumeUpload from '@/components/ResumeUpload';
-import { supabase } from '@/integrations/supabase/client';
-
-interface Profile {
-  id: string;
-  full_name: string;
-  email: string;
-  role: 'student' | 'admin';
-  department?: string;
-  year?: string;
-  created_at: string;
-  updated_at: string;
-}
+import { useAuth } from '@/contexts/AuthContext';
+import { useStudentData, useUpdateStudentData } from '@/hooks/useStudentData';
 
 const StudentDashboard = () => {
+  const { signOut, profile } = useAuth();
+  const { data: studentData, isLoading: studentLoading } = useStudentData();
+  const updateStudentMutation = useUpdateStudentData();
+  
   const [profileData, setProfileData] = useState({
     fullName: '',
     year: '',
     department: ''
   });
   const [hasResume, setHasResume] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    const fetchUserProfile = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (user) {
-          const { data: profile, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .single();
-
-          if (error) throw error;
-
-          if (profile) {
-            const typedProfile = profile as Profile;
-            setProfileData({
-              fullName: typedProfile.full_name || '',
-              year: typedProfile.year || '',
-              department: typedProfile.department || ''
-            });
-            setHasResume(false);
-          }
-        }
-      } catch (error: any) {
-        toast({
-          title: "Error",
-          description: "Failed to load profile data",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchUserProfile();
-  }, [toast]);
+    if (profile) {
+      setProfileData(prev => ({
+        ...prev,
+        fullName: profile.full_name || ''
+      }));
+    }
+    
+    if (studentData) {
+      setProfileData(prev => ({
+        ...prev,
+        year: studentData.year || '',
+        department: studentData.department || ''
+      }));
+      setHasResume(!!studentData.resume_url);
+    }
+  }, [profile, studentData]);
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user) {
-        const { error } = await supabase
-          .from('profiles')
-          .update({
-            full_name: profileData.fullName,
-            year: profileData.year,
-            department: profileData.department,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', user.id);
+      // Update student-specific data in students table
+      await updateStudentMutation.mutateAsync({
+        year: profileData.year,
+        department: profileData.department
+      });
 
-        if (error) throw error;
-
-        toast({
-          title: "Profile Updated!",
-          description: "Your profile information has been saved successfully."
-        });
-      }
+      toast({
+        title: "Profile Updated!",
+        description: "Your profile information has been saved successfully."
+      });
     } catch (error: any) {
+      console.error('Update error:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to update profile",
@@ -122,7 +88,15 @@ const StudentDashboard = () => {
     }
   };
 
-  if (isLoading) {
+  const handleSignOut = async () => {
+    await signOut();
+    toast({
+      title: "Signed out successfully",
+      description: "You have been logged out of your account."
+    });
+  };
+
+  if (studentLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -147,12 +121,10 @@ const StudentDashboard = () => {
           
           <div className="flex items-center space-x-4">
             <span className="text-sm text-gray-600">Welcome, {profileData.fullName}</span>
-            <Link to="/login">
-              <Button variant="ghost" size="sm">
-                <LogOut className="w-4 h-4 mr-2" />
-                Logout
-              </Button>
-            </Link>
+            <Button variant="ghost" size="sm" onClick={handleSignOut}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
           </div>
         </div>
       </header>
@@ -176,7 +148,7 @@ const StudentDashboard = () => {
                   <div>
                     <p className="text-sm text-gray-600">Profile Status</p>
                     <p className="text-xl font-semibold text-gray-900">
-                      {profileData.fullName ? 'Complete' : 'Incomplete'}
+                      {profileData.fullName && profileData.year && profileData.department ? 'Complete' : 'Incomplete'}
                     </p>
                   </div>
                 </div>
@@ -208,7 +180,7 @@ const StudentDashboard = () => {
                   <div>
                     <p className="text-sm text-gray-600">Visibility</p>
                     <p className="text-xl font-semibold text-gray-900">
-                      {hasResume && profileData.fullName ? 'Active' : 'Hidden'}
+                      {hasResume && profileData.fullName && profileData.year && profileData.department ? 'Active' : 'Hidden'}
                     </p>
                   </div>
                 </div>
@@ -235,10 +207,11 @@ const StudentDashboard = () => {
                     <Input
                       id="fullName"
                       value={profileData.fullName}
-                      onChange={(e) => handleInputChange('fullName', e.target.value)}
-                      placeholder="Enter your full name"
-                      className="mt-1"
+                      disabled
+                      placeholder="Name from your account"
+                      className="mt-1 bg-gray-50"
                     />
+                    <p className="text-xs text-gray-500 mt-1">Contact support to change your name</p>
                   </div>
 
                   <div>
@@ -279,8 +252,8 @@ const StudentDashboard = () => {
                     </Select>
                   </div>
 
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? 'Updating...' : 'Update Profile'}
+                  <Button type="submit" className="w-full" disabled={isLoading || updateStudentMutation.isPending}>
+                    {isLoading || updateStudentMutation.isPending ? 'Updating...' : 'Update Profile'}
                   </Button>
                 </form>
               </CardContent>
