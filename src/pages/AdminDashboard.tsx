@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,12 +8,39 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudentsSearch } from '@/hooks/useStudentsSearch';
 import StudentCard from '@/components/StudentCard';
+import { supabase } from '@/integrations/supabase/client';
 
 const AdminDashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const { signOut, profile } = useAuth();
+  const { signOut, profile, user } = useAuth();
   const { toast } = useToast();
+  const [fullName, setFullName] = useState('');
   
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (user?.id) {
+        console.log('Fetching profile for user:', user.id);
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (error) {
+          console.error('Error fetching profile:', error);
+          return;
+        }
+
+        console.log('Fetched profile data:', data);
+        if (data?.full_name) {
+          setFullName(data.full_name);
+        }
+      }
+    };
+
+    fetchProfile();
+  }, [user?.id]);
+
   const { data: searchResults, refetch: performSearch, isFetching: isSearching } = useStudentsSearch(searchQuery);
 
   const handleSearch = (e: React.FormEvent) => {
@@ -57,7 +84,7 @@ const AdminDashboard = () => {
           
           <div className="flex items-center space-x-4">
             <span className="text-sm text-gray-600">
-              Welcome, {profile?.full_name} (Recruiter)
+              Welcome, {fullName || profile?.full_name} (Recruiter)
             </span>
             <Button variant="ghost" size="sm" onClick={handleSignOut}>
               <LogOut className="w-4 h-4 mr-2" />
@@ -76,7 +103,7 @@ const AdminDashboard = () => {
           </div>
 
           {/* Dashboard Stats */}
-          <div className="grid md:grid-cols-4 gap-6 mb-8">
+          <div className="grid md:grid-cols-3 gap-6 mb-8">
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center space-x-3">
@@ -100,20 +127,6 @@ const AdminDashboard = () => {
                   <div>
                     <p className="text-sm text-gray-600">With Resumes</p>
                     <p className="text-2xl font-bold text-gray-900">892</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-                    <Search className="w-6 h-6 text-indigo-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Searches Today</p>
-                    <p className="text-2xl font-bold text-gray-900">23</p>
                   </div>
                 </div>
               </CardContent>
@@ -161,27 +174,6 @@ const AdminDashboard = () => {
                   >
                     {isSearching ? 'Searching...' : 'Search'}
                   </Button>
-                </div>
-                
-                <div className="text-sm text-gray-600">
-                  <p className="mb-2">Try searching for:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      'Python developers with machine learning experience',
-                      'Business students with leadership experience',
-                      'Engineering students with internship background',
-                      'Data science students with SQL skills'
-                    ].map((example, index) => (
-                      <button
-                        key={index}
-                        type="button"
-                        onClick={() => setSearchQuery(example)}
-                        className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-full text-xs transition-colors"
-                      >
-                        {example}
-                      </button>
-                    ))}
-                  </div>
                 </div>
               </form>
             </CardContent>

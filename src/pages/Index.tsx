@@ -1,4 +1,3 @@
-
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,7 +19,7 @@ const Index = () => {
             <Link to="/login">
               <Button variant="ghost">Login</Button>
             </Link>
-            <Link to="/register">
+            <Link to="/new-register">
               <Button>Get Started</Button>
             </Link>
           </div>
@@ -65,7 +64,7 @@ const Index = () => {
                     Get discovered by recruiters
                   </li>
                 </ul>
-                <Link to="/register?role=student">
+                <Link to="/new-register">
                   <Button size="lg" className="w-full bg-blue-600 hover:bg-blue-700">
                     Join as Student
                   </Button>
@@ -99,7 +98,7 @@ const Index = () => {
                     Access to top talent
                   </li>
                 </ul>
-                <Link to="/register?role=admin">
+                <Link to="/new-register">
                   <Button size="lg" className="w-full bg-indigo-600 hover:bg-indigo-700">
                     Join as Recruiter
                   </Button>
@@ -121,7 +120,7 @@ const Index = () => {
             </p>
           </div>
           
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             <div className="text-center group">
               <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-blue-200 transition-colors">
                 <Upload className="w-8 h-8 text-blue-600" />
@@ -139,16 +138,6 @@ const Index = () => {
               <h3 className="text-xl font-semibold text-gray-900 mb-2">Smart Matching</h3>
               <p className="text-gray-600">
                 AI-powered search helps recruiters find the perfect candidates quickly and efficiently.
-              </p>
-            </div>
-            
-            <div className="text-center group">
-              <div className="w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-green-200 transition-colors">
-                <Users className="w-8 h-8 text-green-600" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Quality Connections</h3>
-              <p className="text-gray-600">
-                Build meaningful professional relationships that benefit both students and organizations.
               </p>
             </div>
           </div>

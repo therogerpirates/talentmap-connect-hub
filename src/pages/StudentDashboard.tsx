@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,24 +8,101 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { BookOpen, Upload, User, FileText, CheckCircle, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import ResumeUpload from '@/components/ResumeUpload';
+import { supabase } from '@/integrations/supabase/client';
+
+interface Profile {
+  id: string;
+  full_name: string;
+  email: string;
+  role: 'student' | 'admin';
+  department?: string;
+  year?: string;
+  created_at: string;
+  updated_at: string;
+}
 
 const StudentDashboard = () => {
   const [profileData, setProfileData] = useState({
-    fullName: 'John Smith',
-    year: '3',
-    department: 'Computer Science'
+    fullName: '',
+    year: '',
+    department: ''
   });
   const [hasResume, setHasResume] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  const handleProfileUpdate = (e: React.FormEvent) => {
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+
+          if (error) throw error;
+
+          if (profile) {
+            const typedProfile = profile as Profile;
+            setProfileData({
+              fullName: typedProfile.full_name || '',
+              year: typedProfile.year || '',
+              department: typedProfile.department || ''
+            });
+            setHasResume(false);
+          }
+        }
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: "Failed to load profile data",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserProfile();
+  }, [toast]);
+
+  const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Here you would integrate with Supabase to update profile
-    toast({
-      title: "Profile Updated!",
-      description: "Your profile information has been saved successfully."
-    });
-    console.log('Profile data:', profileData);
+    setIsLoading(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            full_name: profileData.fullName,
+            year: profileData.year,
+            department: profileData.department,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Profile Updated!",
+          description: "Your profile information has been saved successfully."
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update profile",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -45,6 +121,17 @@ const StudentDashboard = () => {
       });
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading your profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -75,7 +162,7 @@ const StudentDashboard = () => {
           {/* Welcome Section */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Student Dashboard</h1>
-            <p className="text-gray-600">Manage your profile and showcase your talents to potential recruiters</p>
+            <p className="text-gray-600">Manage your profile and showcase your talents to recruiters</p>
           </div>
 
           {/* Dashboard Stats */}
@@ -89,7 +176,7 @@ const StudentDashboard = () => {
                   <div>
                     <p className="text-sm text-gray-600">Profile Status</p>
                     <p className="text-xl font-semibold text-gray-900">
-                      {profileData.fullName && profileData.year && profileData.department ? 'Complete' : 'Incomplete'}
+                      {profileData.fullName ? 'Complete' : 'Incomplete'}
                     </p>
                   </div>
                 </div>
@@ -192,8 +279,8 @@ const StudentDashboard = () => {
                     </Select>
                   </div>
 
-                  <Button type="submit" className="w-full">
-                    Update Profile
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? 'Updating...' : 'Update Profile'}
                   </Button>
                 </form>
               </CardContent>
@@ -215,45 +302,6 @@ const StudentDashboard = () => {
               </CardContent>
             </Card>
           </div>
-
-          {/* Tips Section */}
-          <Card className="mt-8">
-            <CardHeader>
-              <CardTitle>Tips for Success</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full mt-2"></div>
-                  <div>
-                    <h4 className="font-medium text-gray-900">Keep Your Profile Current</h4>
-                    <p className="text-sm text-gray-600">Regular updates help recruiters find the most relevant information.</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full mt-2"></div>
-                  <div>
-                    <h4 className="font-medium text-gray-900">Upload a Quality Resume</h4>
-                    <p className="text-sm text-gray-600">A well-formatted PDF resume increases your visibility.</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full mt-2"></div>
-                  <div>
-                    <h4 className="font-medium text-gray-900">Highlight Your Skills</h4>
-                    <p className="text-sm text-gray-600">Make sure your resume clearly showcases your technical and soft skills.</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full mt-2"></div>
-                  <div>
-                    <h4 className="font-medium text-gray-900">Professional Email</h4>
-                    <p className="text-sm text-gray-600">Use a professional email address for the best first impression.</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>
