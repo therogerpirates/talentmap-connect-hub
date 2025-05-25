@@ -78,7 +78,7 @@ const ResumeUpload = ({ onUploadSuccess, hasExistingResume = false }: ResumeUplo
     
     try {
       // Create unique filename
-      const fileExt = selectedFile.name.split('.').pop();
+      const fileExt = selectedFile.name.split('.')?.pop();
       const fileName = `${user.id}/resume.${fileExt}`;
 
       // Upload file to Supabase Storage
@@ -99,20 +99,36 @@ const ResumeUpload = ({ onUploadSuccess, hasExistingResume = false }: ResumeUplo
       await updateStudentData.mutateAsync({
         resume_url: data.publicUrl
       });
+
+      // --- NEW: Call FastAPI to embed resume and update resume_embedding ---
+      const formData = new FormData();
+      formData.append('student_id', user.id);
+      formData.append('file', selectedFile);
+
+      const response = await fetch('http://localhost:8000/embed-resume/', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Embedding failed.');
+      }
+      // --- END NEW ---
       
       setUploadStatus('success');
       onUploadSuccess(true);
       
       toast({
         title: "Upload Successful!",
-        description: "Your resume has been uploaded and is now available to recruiters."
+        description: "Your resume has been uploaded, embedded, and is now available to recruiters."
       });
     } catch (error: any) {
       console.error('Upload error:', error);
       setUploadStatus('error');
       toast({
         title: "Upload Failed",
-        description: error.message || "There was an error uploading your resume. Please try again.",
+        description: error.message || "There was an error uploading or embedding your resume. Please try again.",
         variant: "destructive"
       });
     }

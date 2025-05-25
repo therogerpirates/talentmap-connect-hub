@@ -1,39 +1,31 @@
-
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 
 export const useStudentsSearch = (searchQuery?: string) => {
   return useQuery({
     queryKey: ['students-search', searchQuery],
     queryFn: async () => {
-      let query = supabase
-        .from('profiles')
-        .select('*')
-        .eq('role', 'student');
-
-      if (searchQuery) {
-        // Search in department and other fields
-        query = query.or(`department.ilike.%${searchQuery}%,full_name.ilike.%${searchQuery}%`);
+      if (!searchQuery) return [];
+      const response = await fetch('http://localhost:8000/search-students/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: searchQuery }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch matching students');
       }
-
-      const { data, error } = await query;
-      if (error) {
-        console.error('Search error:', error);
-        throw error;
-      }
-
-      // Transform data to match StudentCard interface
-      return data?.map((profile, index) => ({
-        id: index + 1, // Using index as id since we need a number
-        name: profile.full_name || 'Unknown',
-        year: profile.year || 'Not specified',
-        department: profile.department || 'Not specified',
-        skills: ['JavaScript', 'React', 'TypeScript'], // Mock skills for now
-        gpa: 'N/A', // Mock GPA for now
-        resumeUrl: '', // Mock resume URL for now
-        email: profile.email || '',
-        matchScore: searchQuery ? Math.floor(Math.random() * 30) + 70 : 85 // Mock score for now
-      })) || [];
+      const data = await response.json();
+      // Map backend results to StudentCard props
+      return (data.results || []).map((student: any) => ({
+        id: student.id,
+        name: student.full_name || 'Unknown',
+        year: student.year || 'Not specified',
+        department: student.department || 'Not specified',
+        skills: Array.isArray(student.skills) ? student.skills : (student.skills ? student.skills.split(',') : []),
+        gpa: student.gpa !== undefined && student.gpa !== null ? String(student.gpa) : 'N/A',
+        resumeUrl: student.resume_url || '',
+        email: student.email || '',
+        matchScore: student.similarity ? Math.round(student.similarity * 100) : 0,
+      }));
     },
     enabled: false, // Only run when explicitly called
   });
