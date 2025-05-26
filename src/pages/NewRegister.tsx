@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -58,37 +59,18 @@ const NewRegister = () => {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
+        options: {
+          data: {
+            full_name: formData.fullName,
+            role: selectedRole
+          }
+        }
       });
 
       if (authError) throw authError;
 
       if (authData.user) {
-        console.log('Creating profile with data:', {
-          id: authData.user.id,
-          full_name: formData.fullName,
-          role: selectedRole,
-          email: formData.email
-        });
-
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: authData.user.id,
-            full_name: formData.fullName,
-            role: selectedRole,
-            email: formData.email,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .select()
-          .single();
-
-        if (profileError) {
-          console.error('Profile creation error:', profileError);
-          throw profileError;
-        }
-
-        console.log('Profile created successfully:', profileData);
+        console.log('User created successfully:', authData.user.id);
 
         toast({
           title: "Success!",
@@ -244,4 +226,4 @@ const NewRegister = () => {
   );
 };
 
-export default NewRegister; 
+export default NewRegister;
