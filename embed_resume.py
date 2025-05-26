@@ -7,6 +7,12 @@ import io
 import os
 import traceback
 from fastapi.middleware.cors import CORSMiddleware
+from groq import Groq
+from dotenv import load_dotenv
+import os
+
+# Load environment variables from a .env file
+load_dotenv()
 
 app = FastAPI()
 
@@ -27,7 +33,8 @@ OLLAMA_URL = "http://localhost:11434/api/embeddings"
 OLLAMA_MODEL = "bge-m3:latest"
 
 #GROQ_API_URL = "https://api.groq.com/v1/embeddings"
-GROQ_API_KEY = "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"
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY") # It's safer to use environment variables
+groq_client = Groq(api_key=GROQ_API_KEY)
 
 def extract_text_from_pdf(file_bytes: bytes) -> str:
     try:
@@ -57,6 +64,33 @@ async def get_embedding(text: str):
         traceback.print_exc()
         raise
 
+async def generate_summary(text: str) -> str:
+    if not GROQ_API_KEY:
+        print("GROQ_API_KEY not set. Skipping summary generation.")
+        return ""
+    try:
+        chat_completion = groq_client.chat.completions.create(
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant trained to summarize resumes. Provide a concise and well-structured summary of the following resume text.",
+                },
+                {
+                    "role": "user",
+                    "content": text,
+                },
+            ],
+            model="llama3-8b-8192", # Or choose another Groq model
+            temperature=0.7,
+            max_tokens=500, # Adjust as needed
+        )
+        return chat_completion.choices[0].message.content or ""
+    except Exception as e:
+        print("Groq summarization error:", e)
+        traceback.print_exc()
+        # Decide how to handle this - maybe return empty string or raise? Returning empty for now.
+        return ""
+
 @app.post("/embed-resume/")
 async def embed_resume(
     student_id: str = Form(...),
@@ -68,7 +102,8 @@ async def embed_resume(
         text = extract_text_from_pdf(file_bytes)
         if not text.strip():
             print("No text found in PDF.")
-            raise HTTPException(status_code=400, detail="No text found in PDF.")
+            # Don't raise HTTPException for 400 here, just return error JSON
+            return JSONResponse({"status": "error", "step": "pdf_extraction", "detail": "No text found in PDF."}, status_code=400)
     except Exception as e:
         print("PDF extraction failed:", e)
         return JSONResponse({"status": "error", "step": "pdf_extraction", "detail": str(e)}, status_code=500)
@@ -80,21 +115,73 @@ async def embed_resume(
         print("Embedding failed:", e)
         return JSONResponse({"status": "error", "step": "embedding", "detail": str(e)}, status_code=500)
 
-    # 3. Store embedding in Supabase
+    # 3. Generate summary using Groq
+    summary = await generate_summary(text)
+
+    # 4. Store embedding and summary in Supabase
     try:
-        # Update the student's resume_embedding
-        response = supabase.table("students").update({
-            "resume_embeddings": embedding
-        }).eq("id", student_id).execute()
-        if response.error is not None:
-            print("Supabase update failed:", response.error)
-            raise Exception(response.error)
+        update_data = {"resume_embeddings": embedding}
+        if summary:
+             update_data["summary"] = summary # Only add summary if generated
+
+        response = supabase.table("students").update(
+            update_data
+        ).eq("id", student_id).execute()
+
+        # Check for error in the response data for RPCs/updates
+        if response.data is None or (isinstance(response.data, list) and len(response.data) == 0):
+             # Supabase update doesn't always raise an exception on failure for update/insert
+             # Check if the data was actually updated by verifying the response.data
+             print("Supabase update likely failed or target student not found.", response)
+             # You might want to check the response structure more thoroughly depending on the actual Supabase client response for an update that finds no row.
+             # For now, assuming if data is None/empty list, it didn't find/update the row.
+             return JSONResponse({"status": "error", "step": "supabase_update", "detail": "Supabase update failed or student ID not found."}, status_code=500)
+
+        # Check for APIError which is raised for RPCs but maybe not always for update?
+        # The previous error was an AttributeError on response.error, so removing that check.
+
     except Exception as e:
         print("Supabase update failed:", e)
         traceback.print_exc()
         return JSONResponse({"status": "error", "step": "supabase_update", "detail": str(e)}, status_code=500)
 
-    return JSONResponse({"status": "success", "embedding_dim": len(embedding)})
+    # 2. Get embedding for the SUMMARY from Ollama
+    try:
+        # Use the generated summary to create the embedding
+        summary_embedding = await get_embedding(summary)
+    except Exception as e:
+        print("Summary Embedding failed:", e)
+        return JSONResponse({"status": "error", "step": "summary_embedding", "detail": str(e)}, status_code=500)
+
+    # 3. Store summary and summary embedding in Supabase
+    try:
+        update_data = {
+            "summary": summary,
+            "summary_embedding": summary_embedding # Store the embedding of the summary
+        }
+
+        response = supabase.table("students").update(
+            update_data
+        ).eq("id", student_id).execute()
+
+        # Check for error in the response data for RPCs/updates
+        if response.data is None or (isinstance(response.data, list) and len(response.data) == 0):
+             # Supabase update doesn't always raise an exception on failure for update/insert
+             # Check if the data was actually updated by verifying the response.data
+             print("Supabase update likely failed or target student not found.", response)
+             # You might want to check the response structure more thoroughly depending on the actual Supabase client response for an update that finds no row.
+             # For now, assuming if data is None/empty list, it didn't find/update the row.
+             return JSONResponse({"status": "error", "step": "supabase_update", "detail": "Supabase update failed or student ID not found."}, status_code=500)
+
+        # Check for APIError which is raised for RPCs but maybe not always for update?
+        # The previous error was an AttributeError on response.error, so removing that check.
+
+    except Exception as e:
+        print("Supabase update failed:", e)
+        traceback.print_exc()
+        return JSONResponse({"status": "error", "step": "supabase_update", "detail": str(e)}, status_code=500)
+
+    return JSONResponse({"status": "success", "embedding_dim": len(embedding), "summary_generated": bool(summary)})
 
 @app.post("/search-students/")
 async def search_students(request: Request):

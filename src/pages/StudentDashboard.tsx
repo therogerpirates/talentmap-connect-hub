@@ -297,6 +297,29 @@ const StudentDashboard = () => {
               </CardContent>
             </Card>
 
+            {/* Resume Summary */}
+            {studentData?.summary && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <FileText className="w-5 h-5" />
+                    <span>Resume Summary</span>
+                  </CardTitle>
+                  <CardDescription>
+                    An AI-generated summary of your resume.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {/* Basic formatting for bold text and newlines */}
+                  <div dangerouslySetInnerHTML={{
+                    __html: studentData.summary
+                      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                      .replace(/\n/g, '<br />')
+                  }} />
+                </CardContent>
+              </Card>
+            )}
+
           {/* Achievements & Certifications Section */}
           <Card>
             <CardHeader>
