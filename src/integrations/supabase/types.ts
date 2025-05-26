@@ -12,38 +12,34 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string | null
-          department: string | null
           email: string
           full_name: string
           id: string
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string | null
-          year: string | null
         }
         Insert: {
           created_at?: string | null
-          department?: string | null
           email: string
           full_name: string
           id: string
           role: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
-          year?: string | null
         }
         Update: {
           created_at?: string | null
-          department?: string | null
           email?: string
           full_name?: string
           id?: string
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
-          year?: string | null
         }
         Relationships: []
       }
       students: {
         Row: {
+          achievements_embeddings: string | null
+          achievements_url: string | null
           created_at: string | null
           department: string | null
           gpa: string | null
@@ -51,10 +47,14 @@ export type Database = {
           resume_embeddings: string | null
           resume_url: string | null
           skills: string[] | null
+          summary: string | null
+          summary_embedding: string | null
           updated_at: string | null
           year: string | null
         }
         Insert: {
+          achievements_embeddings?: string | null
+          achievements_url?: string | null
           created_at?: string | null
           department?: string | null
           gpa?: string | null
@@ -62,10 +62,14 @@ export type Database = {
           resume_embeddings?: string | null
           resume_url?: string | null
           skills?: string[] | null
+          summary?: string | null
+          summary_embedding?: string | null
           updated_at?: string | null
           year?: string | null
         }
         Update: {
+          achievements_embeddings?: string | null
+          achievements_url?: string | null
           created_at?: string | null
           department?: string | null
           gpa?: string | null
@@ -73,6 +77,8 @@ export type Database = {
           resume_embeddings?: string | null
           resume_url?: string | null
           skills?: string[] | null
+          summary?: string | null
+          summary_embedding?: string | null
           updated_at?: string | null
           year?: string | null
         }
@@ -138,6 +144,21 @@ export type Database = {
       l2_normalize: {
         Args: { "": string } | { "": unknown } | { "": unknown }
         Returns: unknown
+      }
+      match_students_by_embedding: {
+        Args: { query_embedding: string; match_count?: number }
+        Returns: {
+          id: string
+          email: string
+          full_name: string
+          role: string
+          year: string
+          department: string
+          gpa: number
+          skills: string[]
+          resume_url: string
+          similarity: number
+        }[]
       }
       sparsevec_out: {
         Args: { "": unknown }
