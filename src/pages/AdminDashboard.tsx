@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { BookOpen, Search, Users, FileText, LogOut, Filter } from 'lucide-react';
+import { BookOpen, Search, Users, FileText, LogOut, Filter, Mail, MoreHorizontal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudentsSearch } from '@/hooks/useStudentsSearch';
@@ -192,9 +192,69 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              <div className="grid gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {searchResults.map((student) => (
-                  <StudentCard key={student.id} student={student} />
+                  <Card key={student.id} className="hover:shadow-lg transition-all duration-300 border border-gray-100 h-full">
+                    <CardContent className="p-6 flex flex-col h-full justify-between">
+                      {/* Top Section: Avatar, Name, Role, and Options Icon */}
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center space-x-4">
+                          {/* Placeholder for Image Avatar */}
+                          <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                            {/* Replace with actual image when available */}
+                             {student.name.split(' ').map(n => n[0]).join('')}
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900">{student.name}</h3>
+                            {/* Placeholder for Role - Assuming we don't have this data, using student.year as a placeholder */}
+                            <p className="text-sm text-gray-500">{student.year}nd year</p>
+                          </div>
+                        </div>
+                        {/* Three Dots Icon Placeholder */}
+                        <div className="text-gray-400 cursor-pointer" onClick={() => console.log('Three dots clicked for', student.name)}>
+                           <MoreHorizontal className="w-5 h-5" />
+                        </div>
+                      </div>
+
+                      {/* Middle Section: Department and Hired Date (using GPA as placeholder) */}
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <p className="text-sm text-gray-500">Department</p>
+                          <p className="font-medium text-gray-900">{student.department}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">GPA</p>
+                          {/* Using GPA as a placeholder for Hired Date for now */}
+                          <p className="font-medium text-gray-900">{student.gpa}</p>
+                        </div>
+                      </div>
+
+                      {/* Bottom Section: Contact Info (Email and Placeholder Phone) and Buttons */}
+                      <div className="space-y-3">
+                        <div className="flex items-center space-x-2 text-gray-700">
+                          <Mail className="w-5 h-5 text-gray-500" />
+                          <span className="text-sm">{student.email}</span>
+                        </div>
+                        {/* Placeholder for Phone Number - Assuming we don't have this data */}
+                        
+                      </div>
+
+                       <div className="flex items-center justify-end pt-4 border-t border-gray-100 mt-4">
+                          {student.resumeUrl && (
+                            <a href={student.resumeUrl} target="_blank" rel="noopener noreferrer">
+                              <Button variant="outline" size="sm" className="h-8 mr-2">
+                                <FileText className="w-4 h-4 mr-1" />
+                                Resume
+                              </Button>
+                            </a>
+                          )}
+                          <Button size="sm" className="h-8 bg-blue-600 hover:bg-blue-700">
+                            Contact
+                          </Button>
+                        </div>
+
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             </div>
