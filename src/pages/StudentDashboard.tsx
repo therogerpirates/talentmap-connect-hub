@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,6 @@ import { useToast } from '@/hooks/use-toast';
 import ResumeUpload from '@/components/ResumeUpload';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudentData, useUpdateStudentData } from '@/hooks/useStudentData';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const StudentDashboard = () => {
   const { signOut, profile } = useAuth();
@@ -25,9 +25,6 @@ const StudentDashboard = () => {
   const [hasResume, setHasResume] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [achievementName, setAchievementName] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (profile) {
@@ -99,22 +96,49 @@ const StudentDashboard = () => {
     });
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setSelectedFile(e.target.files[0]);
-    } else {
-      setSelectedFile(null);
-    }
-  };
-
-  const handleSaveAchievement = () => {
-    // Handle saving the new achievement
-    // You would typically upload the file here and then save the achievement name and file URL/embedding to the database
-    console.log('Saving achievement:', achievementName, selectedFile);
-    // Close modal after saving (or handle upload success/failure)
-    // setIsModalOpen(false);
-    // setAchievementName('');
-    // setSelectedFile(null);
+  const formatResumeSummary = (summary: string) => {
+    // Split the summary into sections based on common patterns
+    const sections = summary.split(/\n\s*\n/);
+    
+    return sections.map((section, index) => {
+      const lines = section.split('\n').filter(line => line.trim());
+      
+      return (
+        <div key={index} className="mb-6 last:mb-0">
+          {lines.map((line, lineIndex) => {
+            const trimmedLine = line.trim();
+            
+            // Check if line is a header (contains **text** or is all caps)
+            if (trimmedLine.match(/^\*\*(.*?)\*\*/) || trimmedLine === trimmedLine.toUpperCase()) {
+              return (
+                <h3 key={lineIndex} className="text-lg font-semibold text-gray-900 mb-3 border-b border-gray-200 pb-1">
+                  {trimmedLine.replace(/\*\*(.*?)\*\*/g, '$1')}
+                </h3>
+              );
+            }
+            
+            // Check if line starts with a bullet point or dash
+            if (trimmedLine.match(/^[-•*]\s/)) {
+              return (
+                <div key={lineIndex} className="flex items-start mb-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                  <p className="text-gray-700 leading-relaxed">
+                    {trimmedLine.replace(/^[-•*]\s/, '')}
+                  </p>
+                </div>
+              );
+            }
+            
+            // Regular paragraph
+            return (
+              <p key={lineIndex} className="text-gray-700 leading-relaxed mb-2">
+                {trimmedLine}
+              </p>
+            );
+          })}
+        </div>
+      );
+    });
   };
 
   if (studentLoading) {
@@ -209,7 +233,8 @@ const StudentDashboard = () => {
             </Card>
           </div>
           <p className="text-sm text-black-250">*Complete your profile to be visible to recruiters</p>
-          {/* Separate grid for Profile, Resume, and Achievements */}
+          
+          {/* Main Content Grid */}
           <div className="grid lg:grid-cols-2 gap-8 mt-8">
             {/* Profile Information */}
             <Card>
@@ -296,129 +321,28 @@ const StudentDashboard = () => {
                 <ResumeUpload onUploadSuccess={handleResumeUpload} hasExistingResume={hasResume} />
               </CardContent>
             </Card>
-
-            {/* Resume Summary */}
-            {studentData?.summary && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <FileText className="w-5 h-5" />
-                    <span>Resume Summary</span>
-                  </CardTitle>
-                  <CardDescription>
-                    An AI-generated summary of your resume.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {/* Basic formatting for bold text and newlines */}
-                  <div dangerouslySetInnerHTML={{
-                    __html: studentData.summary
-                      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                      .replace(/\n/g, '<br />')
-                  }} />
-                </CardContent>
-              </Card>
-            )}
-
-          {/* Achievements & Certifications Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="lucide lucide-award text-gray-900"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
-                <span>Achievements & Certifications</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {/* Placeholder for list of achievements */}
-              {/* Replace with actual data from studentData when available */}
-              {[].length === 0 ? (
-                <div className="text-center text-gray-500 italic mb-4">
-                  No achievements added yet.
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {[].map((achievement, index) => (
-                    <div key={index} className="flex items-start space-x-3">
-                      {/* Placeholder Icon */}
-                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="lucide lucide-award text-blue-600"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
-                      </div>
-                      <div className="flex-grow">
-                        <h4 className="font-medium text-gray-900">Achievement Name Placeholder</h4>
-                        <p className="text-sm text-gray-500">Issued by Placeholder Institution • Date Placeholder</p>
-                        <div className="flex items-center space-x-4 mt-1 text-sm">
-                          <button className="flex items-center space-x-1 text-blue-600 hover:underline">
-                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="lucide lucide-eye"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-                            <span>View Certification</span>
-                          </button>
-                           <button className="flex items-center space-x-1 text-gray-600 hover:underline">
-                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="lucide lucide-pencil"><path d="M17 3a2.85 2.85 0 0 0-4 0L7 9v4h4l6-6a2.85 2.85 0 0 0 0-4Z"/><path d="m19 5 4 4"/><path d="M13.5 10.5 2.5 21.5"/></svg>
-                            <span>Edit</span>
-                           </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <Button variant="outline" className="w-full" onClick={() => setIsModalOpen(true)}>
-                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="lucide lucide-plus text-blue-600 mr-2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-                Add New Achievement
-              </Button>
-            </CardContent>
-          </Card>
-
           </div>
-        </div>
 
-        {/* Add Achievement Modal */}
-        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Add New Achievement</DialogTitle>
-              <DialogDescription>
-                Add details about your achievement and upload the certification.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="achievement-name" className="text-right">
-                  Name
-                </Label>
-                <Input
-                  id="achievement-name"
-                  value={achievementName}
-                  onChange={(e) => setAchievementName(e.target.value)}
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="certification" className="text-right">
-                  Certification
-                </Label>
-                <Input
-                  id="certification"
-                  type="file"
-                  onChange={handleFileChange}
-                  className="col-span-3"
-                />
-              </div>
-              {selectedFile && (
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <span className="col-span-1"></span> {/* Empty span for alignment */}
-                  <span className="col-span-3 text-sm text-gray-700 truncate">Selected file: {selectedFile.name}</span>
+          {/* Resume Summary - Full Width */}
+          {studentData?.summary && (
+            <Card className="mt-8">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <FileText className="w-5 h-5" />
+                  <span>Resume Summary</span>
+                </CardTitle>
+                <CardDescription>
+                  An AI-generated summary of your resume highlighting your key qualifications and experience.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="prose max-w-none">
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-100">
+                  {formatResumeSummary(studentData.summary)}
                 </div>
-              )}
-            </div>
-            <DialogFooter>
-              <Button type="submit" onClick={handleSaveAchievement} disabled={!achievementName || !selectedFile}>
-                Save Achievement
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
     </div>
   );
