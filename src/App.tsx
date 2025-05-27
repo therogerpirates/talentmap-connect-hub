@@ -13,6 +13,8 @@ import ResetPassword from "./pages/ResetPassword";
 import StudentDashboard from "./pages/StudentDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
+import ProfilePage from './pages/ProfilePage';
+import AdminStudentDetail from './pages/AdminStudentDetail';
 
 const queryClient = new QueryClient();
 
@@ -44,6 +46,15 @@ const App = () => (
                   <AdminDashboard />
                 </ProtectedRoute>
               } 
+            />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route 
+              path="/admin/students/:studentId" 
+              element={
+                <ProtectedRoute role="admin">
+                  <AdminStudentDetail />
+                </ProtectedRoute>
+              }
             />
             <Route path="*" element={<NotFound />} />
           </Routes>

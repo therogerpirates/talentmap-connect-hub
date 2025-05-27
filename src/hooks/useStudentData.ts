@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,6 +9,8 @@ interface StudentData {
   gpa?: string;
   skills?: string[];
   resume_url?: string;
+  ats_score?: number;
+  has_internship?: boolean;
 }
 
 export const useStudentData = () => {

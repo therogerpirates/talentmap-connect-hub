@@ -1,5 +1,5 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 import httpx
 import PyPDF2
 from supabase import create_client, Client
@@ -10,6 +10,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from groq import Groq
 from dotenv import load_dotenv
 import os
+import csv # Import csv module
+import zipfile # Import zipfile module
 
 # Load environment variables from a .env file
 load_dotenv()
@@ -47,6 +49,54 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
         print("PDF extraction error:", e)
         traceback.print_exc()
         raise
+
+# Placeholder function for skill extraction
+def extract_skills_from_text(text: str) -> list[str]:
+    """
+    Extracts a list of skills from the resume text.
+    This is a placeholder - you need to implement the actual skill extraction logic.
+    """
+    # TODO: Implement actual skill extraction logic here.
+    # This could involve keyword matching, regex, or an NLP library.
+    # Example: basic keyword matching
+    potential_skills = ["Python", "JavaScript", "React", "SQL", "AWS", "Docker"]
+    found_skills = [skill for skill in potential_skills if skill.lower() in text.lower()]
+    return found_skills
+
+# Placeholder function for extracting experience and internship status
+def extract_experience_data(text: str) -> dict:
+    """
+    Extracts experience data, including internship status, from the resume text.
+    This is a placeholder - you need to implement the actual extraction logic.
+    """
+    # TODO: Implement actual experience and internship extraction logic here.
+    # This is significantly more complex than skill extraction and may require advanced NLP.
+    # A simple placeholder might just check for keywords like "intern" or "internship".
+    has_internship = "internship" in text.lower() or "intern" in text.lower()
+    # In a real application, you'd extract job titles, companies, dates, descriptions, etc.
+    # For this placeholder, we'll just return the internship status.
+    return {"has_internship": has_internship, "experience_entries": []} # Add more fields as needed
+
+# Placeholder function for calculating ATS score
+def calculate_ats_score(text: str) -> int:
+    """
+    Calculates a basic Applicant Tracking System (ATS) compatibility score.
+    This is a placeholder - you need to implement the actual scoring logic.
+    """
+    # TODO: Implement actual ATS scoring logic here.
+    # This could involve keyword density (against a job description if available), formatting, section headers, etc.
+    # A very simple placeholder score based on resume length:
+    words_count = len(text.split())
+    # Simple scoring: 0-100. Assume a good resume is between 300-800 words.
+    if words_count < 300:
+        score = max(0, int(words_count / 3))
+    elif words_count > 800:
+        score = max(0, 100 - int((words_count - 800) / 5))
+    else:
+        score = 50 + int((words_count - 300) / 10) # Scale from 50 to 100
+    
+    # Cap score between 0 and 100
+    return max(0, min(100, score))
 
 async def get_embedding(text: str):
     payload = {
@@ -118,11 +168,53 @@ async def embed_resume(
     # 3. Generate summary using Groq
     summary = await generate_summary(text)
 
-    # 4. Store embedding and summary in Supabase
+    # 4. Extract skills from text
     try:
-        update_data = {"resume_embeddings": embedding}
-        if summary:
-             update_data["summary"] = summary # Only add summary if generated
+        skills = extract_skills_from_text(text)
+        print(f"Extracted skills: {skills}") # Log extracted skills
+    except Exception as e:
+        print("Skill extraction failed:", e)
+        # Decide how to handle skill extraction failure - proceed without skills or return error?
+        # For now, we'll just log and proceed.
+        skills = [] # Ensure skills is an empty list on failure
+
+    # 5. Extract experience data
+    try:
+        experience_data = extract_experience_data(text)
+        has_internship = experience_data.get("has_internship", False)
+        # You might also want to store experience_entries if you extract them
+        print(f"Extracted experience data: {experience_data}") # Log extracted data
+    except Exception as e:
+        print("Experience extraction failed:", e)
+        # Decide how to handle failure - proceed or return error?
+        # For now, log and proceed with defaults.
+        has_internship = False
+        experience_data = {"has_internship": False, "experience_entries": []}
+
+    # 6. Calculate ATS score
+    try:
+        ats_score = calculate_ats_score(text)
+        print(f"Calculated ATS score: {ats_score}") # Log the score
+    except Exception as e:
+        print("ATS score calculation failed:", e)
+        # Decide how to handle failure - proceed or return error?
+        # For now, log and proceed with a default score.
+        ats_score = 0 # Default score on failure
+
+    # 7. Store data in Supabase
+    try:
+        update_data = {
+            "resume_embeddings": embedding,
+            "summary": summary,
+            "skills": skills,
+            "has_internship": has_internship, # Add has_internship
+            "ats_score": ats_score # Add ATS score
+            # Add experience_entries here if you decide to store them
+        }
+
+        # Only add summary_embedding if summary was generated - kept for potential future use
+        # if summary:
+        #     update_data["summary_embedding"] = await get_embedding(summary) # Need to re-generate if not done yet
 
         response = supabase.table("students").update(
             update_data
@@ -211,4 +303,135 @@ async def search_students(request: Request):
     print("Query embedding:", embedding)
     print("Supabase vector search results:", results)
 
-    return JSONResponse({"results": results}) 
+    return JSONResponse({"results": results})
+
+# Helper to get file path from Supabase URL
+def get_file_path_from_supabase_url(url: str) -> str | None:
+    public_url_base = f"https://vsgyopyvyeeqryzomtgq.supabase.co/storage/v1/object/public/resumes/"
+    if url.startswith(public_url_base):
+        return url[len(public_url_base):]
+    return None # Or raise an error for invalid URL
+
+# New endpoint to download student details as CSV
+@app.post("/download-students-csv/")
+async def download_students_csv(student_ids: list[str]):
+    if not student_ids:
+        raise HTTPException(status_code=400, detail="No student IDs provided")
+
+    try:
+        # Fetch student-specific data from students table
+        student_response = supabase.table("students").select("id, year, department, gpa, skills, ats_score, has_internship, summary").in_("id", student_ids).execute()
+        students_data = student_response.data
+
+        if not students_data:
+            # Return a response indicating no student data found, but still a valid CSV structure if needed
+            output = io.StringIO()
+            writer = csv.writer(output)
+            writer.writerow(["ID", "Full Name", "Year", "Department", "GPA", "Skills", "ATS Score", "Has Internship", "Summary", "Email"])
+            output.seek(0)
+            return StreamingResponse(output, media_type="text/csv", headers={'Content-Disposition': 'attachment; filename="students_details.csv"'})
+
+        # Fetch full_name and email from profiles table
+        profile_response = supabase.table("profiles").select("id, full_name, email").in_("id", student_ids).execute()
+        profiles_data = profile_response.data if profile_response.data else []
+
+        # Create a dictionary for easy lookup of full_names and emails by ID
+        profile_info = {profile['id']: {"full_name": profile.get('full_name', ''), "email": profile.get('email', '')} for profile in profiles_data}
+
+        # Prepare data for CSV
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        # Write header row
+        writer.writerow(["ID", "Full Name", "Year", "Department", "GPA", "Skills", "ATS Score", "Has Internship", "Summary", "Email"])
+
+        # Write data rows, combining student data and profile info
+        for student in students_data:
+            student_id = student.get("id", "")
+            writer.writerow([
+                student_id,
+                profile_info.get(student_id, {}).get("full_name", ""), # Get full_name from the profiles data
+                student.get("year", ""),
+                student.get("department", ""),
+                student.get("gpa", ""),
+                # Handle skills array/string
+                ", ".join(student.get("skills", [])) if isinstance(student.get("skills"), list) else student.get("skills", ""),
+                student.get("ats_score", ""),
+                # Convert boolean to Yes/No or similar
+                "Yes" if student.get("has_internship") else "No",
+                student.get("summary", ""),
+                profile_info.get(student_id, {}).get("email", ""), # Get email from the profiles data
+            ])
+
+        # Move to the beginning of the stream
+        output.seek(0)
+
+        # Return as StreamingResponse
+        return StreamingResponse(output, 
+            media_type="text/csv", 
+            headers={'Content-Disposition': 'attachment; filename="students_details.csv"'}
+        )
+
+    except Exception as e:
+        print("CSV download error:", e)
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to generate CSV: {e}")
+
+# New endpoint to download resumes as a Zip file
+@app.post("/download-resumes-zip/")
+async def download_resumes_zip(student_ids: list[str]):
+    if not student_ids:
+        raise HTTPException(status_code=400, detail="No student IDs provided")
+
+    # Use io.BytesIO for binary zip file
+    zip_output = io.BytesIO()
+
+    try:
+        with zipfile.ZipFile(zip_output, 'w') as zf:
+            for student_id in student_ids:
+                # Fetch resume_url for each student
+                response = supabase.table("students").select("resume_url").eq("id", student_id).single().execute()
+                resume_url_data = response.data
+
+                if resume_url_data and resume_url_data.get("resume_url"):
+                    resume_url = resume_url_data["resume_url"]
+                    file_path = get_file_path_from_supabase_url(resume_url)
+
+                    if file_path:
+                         try:
+                            # Download the file content from Supabase Storage
+                            # Assuming 'resumes' is your bucket name
+                            # Correctly handle the return value which is bytes if successful, or raises exception
+                            file_content = supabase.storage.from_('resumes').download(file_path)
+
+                            # If download is successful, file_content is bytes
+                            # Use a cleaner filename for the zip entry
+                            file_name = os.path.basename(file_path) # Keep original file name
+                            zf.writestr(f"{student_id}_{file_name}", file_content)
+
+                         except Exception as download_err:
+                            # Catch exceptions during download (e.g., file not found, permission issues)
+                            print(f"Exception during download for {file_path}:", download_err)
+                            zf.writestr(f"error_{student_id}.txt", f"Exception downloading resume for student ID {student_id}: {download_err}")
+
+                    else:
+                        print(f"Invalid resume URL for student {student_id}: {resume_url}")
+                        zf.writestr(f"no_resume_{student_id}.txt", f"Invalid resume URL for student ID {student_id}: {resume_url}")
+
+                else:
+                    print(f"No resume URL found for student {student_id}")
+                    zf.writestr(f"no_resume_{student_id}.txt", f"No resume URL found for student ID {student_id}")
+
+        # Move to the beginning of the stream
+        zip_output.seek(0)
+
+        # Return as StreamingResponse
+        return StreamingResponse(zip_output, 
+            media_type="application/zip", 
+            headers={'Content-Disposition': 'attachment; filename="students_resumes.zip"'}
+        )
+
+    except Exception as e:
+        print("Zip download error:", e)
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to generate zip: {e}") 

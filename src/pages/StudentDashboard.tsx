@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,11 +5,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BookOpen, Upload, User, FileText, CheckCircle, LogOut } from 'lucide-react';
+import { BookOpen, Upload, User, FileText, CheckCircle, LogOut, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import ResumeUpload from '@/components/ResumeUpload';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudentData, useUpdateStudentData } from '@/hooks/useStudentData';
+import GaugeChart from 'react-gauge-chart';
 
 const StudentDashboard = () => {
   const { signOut, profile } = useAuth();
@@ -248,61 +248,32 @@ const StudentDashboard = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleProfileUpdate} className="space-y-4">
-                  <div>
-                    <Label htmlFor="fullName">Full Name</Label>
-                    <Input
-                      id="fullName"
-                      value={profileData.fullName}
-                      disabled
-                      placeholder="Name from your account"
-                      className="mt-1 bg-gray-50"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Contact support to change your name</p>
+                {/* Static profile data display with improved design */}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-gray-600 text-sm">Full Name:</Label>
+                      <p className="font-medium text-gray-900 text-lg leading-snug">{profileData.fullName || 'N/A'}</p>
+                    </div>
+
+                    <div>
+                      <Label className="text-gray-600 text-sm">Academic Year:</Label>
+                      <p className="font-medium text-gray-900 text-lg leading-snug">{profileData.year || 'N/A'}</p>
+                    </div>
+
+                    <div className="col-span-2">
+                      <Label className="text-gray-600 text-sm">Department:</Label>
+                      <p className="font-medium text-gray-900 text-lg leading-snug">{profileData.department || 'N/A'}</p>
+                    </div>
                   </div>
 
-                  <div>
-                    <Label htmlFor="year">Academic Year</Label>
-                    <Select value={profileData.year} onValueChange={(value) => handleInputChange('year', value)}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Select your year" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">1st Year</SelectItem>
-                        <SelectItem value="2">2nd Year</SelectItem>
-                        <SelectItem value="3">3rd Year</SelectItem>
-                        <SelectItem value="4">4th Year</SelectItem>
-                        <SelectItem value="graduate">Graduate</SelectItem>
-                        <SelectItem value="phd">PhD</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  {/* Add a link to the separate profile edit page */}
+                  <div className="pt-4 border-t mt-4">
+                    <Link to="/profile">
+                      <Button className="w-full">Edit Profile Information</Button>
+                    </Link>
                   </div>
-
-                  <div>
-                    <Label htmlFor="department">Department</Label>
-                    <Select value={profileData.department} onValueChange={(value) => handleInputChange('department', value)}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Select your department" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Computer Science">Computer Science</SelectItem>
-                        <SelectItem value="Engineering">Engineering</SelectItem>
-                        <SelectItem value="Business">Business Administration</SelectItem>
-                        <SelectItem value="Mathematics">Mathematics</SelectItem>
-                        <SelectItem value="Physics">Physics</SelectItem>
-                        <SelectItem value="Chemistry">Chemistry</SelectItem>
-                        <SelectItem value="Biology">Biology</SelectItem>
-                        <SelectItem value="Psychology">Psychology</SelectItem>
-                        <SelectItem value="Economics">Economics</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <Button type="submit" className="w-full" disabled={isLoading || updateStudentMutation.isPending}>
-                    {isLoading || updateStudentMutation.isPending ? 'Updating...' : 'Update Profile'}
-                  </Button>
-                </form>
+                </div>
               </CardContent>
             </Card>
 
@@ -321,11 +292,89 @@ const StudentDashboard = () => {
                 <ResumeUpload onUploadSuccess={handleResumeUpload} hasExistingResume={hasResume} />
               </CardContent>
             </Card>
-          </div>
 
-          {/* Resume Summary - Full Width */}
-          {studentData?.summary && (
-            <Card className="mt-8">
+            {/* Skills - Full Width */}
+            {studentData?.skills && studentData.skills.length > 0 && hasResume && (
+              <Card className="mt-8 lg:col-span-2">
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <FileText className="w-5 h-5" />
+                    <span>Skills</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Key skills extracted from your resume.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {studentData.skills.map((skill, index) => (
+                      <span key={index} className="bg-blue-100 text-blue-800 text-sm font-medium px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* ATS Score - Add a Card for ATS Score */}
+            {studentData?.ats_score !== undefined && hasResume && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <FileText className="w-5 h-5" />
+                    <span>ATS Score</span>
+                  </CardTitle>
+                  <CardDescription>
+                    An estimate of how well your resume might be parsed by Applicant Tracking Systems.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center w-48 mx-auto">
+                    {studentData.ats_score !== undefined && (
+                      <GaugeChart
+                        id="ats-score-gauge"
+                        nrOfLevels={20}
+                        percent={studentData.ats_score / 100}
+                        arcWidth={0.3}
+                        colors={['#FF5F6D', '#FFC371', '#4CAF50']}
+                        textColor="#000000"
+                      />
+                    )}
+                    <p className="text-sm text-gray-600 mt-2">ATS Score: {studentData.ats_score}/100</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Experience - Add a Card for Experience/Internship */}
+            {studentData?.has_internship !== undefined && hasResume && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <FileText className="w-5 h-5" />
+                    <span>Experience</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Information about your work and internship experience.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="flex items-center">
+                    Has Internship: 
+                    {studentData.has_internship ? 
+                      <CheckCircle className="w-5 h-5 text-green-500 ml-2" /> 
+                      : 
+                      <X className="w-5 h-5 text-red-500 ml-2" />
+                    }
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+          {/* Resume Summary - Full Width - Move this section down */}
+          {studentData?.summary && hasResume && (
+            <Card className="mt-8 lg:col-span-2">
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <FileText className="w-5 h-5" />
@@ -342,6 +391,9 @@ const StudentDashboard = () => {
               </CardContent>
             </Card>
           )}
+
+          </div> {/* Closing div for Main Content Grid */}
+
         </div>
       </div>
     </div>

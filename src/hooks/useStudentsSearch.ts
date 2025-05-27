@@ -1,5 +1,21 @@
 import { useQuery } from '@tanstack/react-query';
 
+// Define an interface for the student data returned by the search
+interface SearchResultStudent {
+  id: string;
+  name: string; // Assuming 'name' is derived from full_name
+  year: string;
+  department: string;
+  skills: string[];
+  gpa: string;
+  resumeUrl: string;
+  email: string;
+  matchScore: number; // Assuming similarity is mapped to matchScore
+  ats_score?: number; // Added ats_score
+  has_internship?: boolean; // Added has_internship
+  // Add other fields you might need from the search results
+}
+
 export const useStudentsSearch = (searchQuery?: string) => {
   return useQuery({
     queryKey: ['students-search', searchQuery],
@@ -14,8 +30,8 @@ export const useStudentsSearch = (searchQuery?: string) => {
         throw new Error('Failed to fetch matching students');
       }
       const data = await response.json();
-      // Map backend results to StudentCard props
-      return (data.results || []).map((student: any) => ({
+      // Map backend results to SearchResultStudent interface
+      return (data.results || []).map((student: any): SearchResultStudent => ({
         id: student.id,
         name: student.full_name || 'Unknown',
         year: student.year || 'Not specified',
@@ -25,6 +41,8 @@ export const useStudentsSearch = (searchQuery?: string) => {
         resumeUrl: student.resume_url || '',
         email: student.email || '',
         matchScore: student.similarity ? Math.round(student.similarity * 100) : 0,
+        ats_score: student.ats_score, // Map ats_score
+        has_internship: student.has_internship, // Map has_internship
       }));
     },
     enabled: false, // Only run when explicitly called

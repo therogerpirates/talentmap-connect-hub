@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { BookOpen, Search, Users, FileText, LogOut, Filter, Mail, MoreHorizontal } from 'lucide-react';
+import { BookOpen, Search, Users, FileText, LogOut, Filter, Mail, MoreHorizontal, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudentsSearch } from '@/hooks/useStudentsSearch';
@@ -55,11 +55,6 @@ const AdminDashboard = () => {
     }
 
     performSearch();
-    
-    toast({
-      title: "Search Complete!",
-      description: `Found ${searchResults?.length || 0} matching candidates.`
-    });
   };
 
   const handleSignOut = async () => {
@@ -68,6 +63,144 @@ const AdminDashboard = () => {
       title: "Signed out successfully",
       description: "You have been logged out of your account."
     });
+  };
+
+  // Function to handle CSV download
+  const handleDownloadCsv = async () => {
+    if (!searchResults || searchResults.length === 0) {
+      toast({
+        title: "No candidates to download",
+        description: "Perform a search first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const studentIds = searchResults.map(student => student.id);
+    // Optionally set a loading state for the buttons here
+
+    try {
+      const response = await fetch('http://localhost:8000/download-students-csv/', { // Use your backend URL
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(studentIds),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to download CSV: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      // Get the filename from the Content-Disposition header
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = 'students_details.csv'; // Default filename
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename=\"(.+)\"/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "CSV Download Started",
+        description: `Downloading ${filename}.`,
+      });
+
+    } catch (error: any) {
+      console.error('CSV download error:', error);
+      toast({
+        title: "Download Failed",
+        description: error.message || "Could not download the CSV file.",
+        variant: "destructive",
+      });
+    } finally {
+       // Optionally unset the loading state
+    }
+  };
+
+  // Function to handle Zip download
+  const handleDownloadZip = async () => {
+     if (!searchResults || searchResults.length === 0) {
+      toast({
+        title: "No candidates to download",
+        description: "Perform a search first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Filter for students with resume URLs
+    const studentsWithResumes = searchResults.filter(student => student.resumeUrl);
+
+    if (studentsWithResumes.length === 0) {
+         toast({
+            title: "No resumes available",
+            description: "None of the searched candidates have resumes uploaded.",
+            variant: "destructive",
+        });
+        return;
+    }
+
+    const studentIds = studentsWithResumes.map(student => student.id);
+    // Optionally set a loading state for the buttons here
+
+    try {
+      const response = await fetch('http://localhost:8000/download-resumes-zip/', { // Use your backend URL
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(studentIds),
+      });
+
+      if (!response.ok) {
+         const errorText = await response.text();
+         throw new Error(`Failed to download Zip: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+       // Get the filename from the Content-Disposition header
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = 'students_resumes.zip'; // Default filename
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename=\"(.+)\"/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Zip Download Started",
+        description: `Downloading ${filename}.`,
+      });
+
+    } catch (error: any) {
+      console.error('Zip download error:', error);
+      toast({
+        title: "Download Failed",
+        description: error.message || "Could not download the Zip file.",
+        variant: "destructive",
+      });
+    } finally {
+       // Optionally unset the loading state
+    }
   };
 
   return (
@@ -104,47 +237,6 @@ const AdminDashboard = () => {
 
           {/* Dashboard Stats */}
           <div className="grid md:grid-cols-3 gap-6 mb-8">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <Users className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Total Students</p>
-                    <p className="text-2xl font-bold text-gray-900">1,247</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                    <FileText className="w-6 h-6 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">With Resumes</p>
-                    <p className="text-2xl font-bold text-gray-900">892</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                    <Filter className="w-6 h-6 text-orange-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Active Filters</p>
-                    <p className="text-2xl font-bold text-gray-900">0</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </div>
 
           {/* Search Section */}
@@ -186,6 +278,28 @@ const AdminDashboard = () => {
                 <h2 className="text-2xl font-bold text-gray-900">
                   Search Results ({searchResults.length} candidates found)
                 </h2>
+                {/* Download Buttons */}
+                <div className="flex items-center space-x-4">
+                   <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleDownloadZip}
+                      disabled={isSearching || !searchResults || searchResults.length === 0}
+                   >
+                      <Download className="w-4 h-4 mr-1" />
+                      Download Resumes (Zip)
+                   </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleDownloadCsv}
+                       disabled={isSearching || !searchResults || searchResults.length === 0}
+                   >
+                      <Download className="w-4 h-4 mr-1" />
+                      Download Details (CSV)
+                   </Button>
+                </div>
+                {/* Original Sort Info */}
                 <div className="flex items-center space-x-2 text-sm text-gray-600">
                   <span>Sorted by:</span>
                   <span className="font-medium">Match Score</span>
@@ -194,67 +308,69 @@ const AdminDashboard = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {searchResults.map((student) => (
-                  <Card key={student.id} className="hover:shadow-lg transition-all duration-300 border border-gray-100 h-full">
-                    <CardContent className="p-6 flex flex-col h-full justify-between">
-                      {/* Top Section: Avatar, Name, Role, and Options Icon */}
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center space-x-4">
-                          {/* Placeholder for Image Avatar */}
-                          <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                            {/* Replace with actual image when available */}
-                             {student.name.split(' ').map(n => n[0]).join('')}
+                  <Link to={`/admin/students/${student.id}`} key={student.id}>
+                    <Card className="hover:shadow-lg transition-all duration-300 border border-gray-100 h-full">
+                      <CardContent className="p-6 flex flex-col h-full justify-between">
+                        {/* Top Section: Avatar, Name, Role, and Options Icon */}
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center space-x-4">
+                            {/* Placeholder for Image Avatar */}
+                            <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                              {/* Replace with actual image when available */}
+                               {student.name.split(' ').map(n => n[0]).join('')}
+                            </div>
+                            <div>
+                              <h3 className="text-lg font-semibold text-gray-900">{student.name}</h3>
+                              {/* Placeholder for Role - Assuming we don't have this data, using student.year as a placeholder */}
+                              <p className="text-sm text-gray-500">{student.year}nd year</p>
+                            </div>
+                          </div>
+                          {/* Three Dots Icon Placeholder */}
+                          <div className="text-gray-400 cursor-pointer" onClick={() => console.log('Three dots clicked for', student.name)}>
+                             <MoreHorizontal className="w-5 h-5" />
+                          </div>
+                        </div>
+
+                        {/* Middle Section: Department and Hired Date (using GPA as placeholder) */}
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                          <div>
+                            <p className="text-sm text-gray-500">Department</p>
+                            <p className="font-medium text-gray-900">{student.department}</p>
                           </div>
                           <div>
-                            <h3 className="text-lg font-semibold text-gray-900">{student.name}</h3>
-                            {/* Placeholder for Role - Assuming we don't have this data, using student.year as a placeholder */}
-                            <p className="text-sm text-gray-500">{student.year}nd year</p>
+                            <p className="text-sm text-gray-500">GPA</p>
+                            {/* Using GPA as a placeholder for Hired Date for now */}
+                            <p className="font-medium text-gray-900">{student.gpa}</p>
                           </div>
                         </div>
-                        {/* Three Dots Icon Placeholder */}
-                        <div className="text-gray-400 cursor-pointer" onClick={() => console.log('Three dots clicked for', student.name)}>
-                           <MoreHorizontal className="w-5 h-5" />
-                        </div>
-                      </div>
 
-                      {/* Middle Section: Department and Hired Date (using GPA as placeholder) */}
-                      <div className="grid grid-cols-2 gap-4 mb-4">
-                        <div>
-                          <p className="text-sm text-gray-500">Department</p>
-                          <p className="font-medium text-gray-900">{student.department}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-500">GPA</p>
-                          {/* Using GPA as a placeholder for Hired Date for now */}
-                          <p className="font-medium text-gray-900">{student.gpa}</p>
-                        </div>
-                      </div>
-
-                      {/* Bottom Section: Contact Info (Email and Placeholder Phone) and Buttons */}
-                      <div className="space-y-3">
-                        <div className="flex items-center space-x-2 text-gray-700">
-                          <Mail className="w-5 h-5 text-gray-500" />
-                          <span className="text-sm">{student.email}</span>
-                        </div>
-                        {/* Placeholder for Phone Number - Assuming we don't have this data */}
-                        
-                      </div>
-
-                       <div className="flex items-center justify-end pt-4 border-t border-gray-100 mt-4">
-                          {student.resumeUrl && (
-                            <a href={student.resumeUrl} target="_blank" rel="noopener noreferrer">
-                              <Button variant="outline" size="sm" className="h-8 mr-2">
-                                <FileText className="w-4 h-4 mr-1" />
-                                Resume
-                              </Button>
-                            </a>
-                          )}
-                          <Button size="sm" className="h-8 bg-blue-600 hover:bg-blue-700">
-                            Contact
-                          </Button>
+                        {/* Bottom Section: Contact Info (Email and Placeholder Phone) and Buttons */}
+                        <div className="space-y-3">
+                          <div className="flex items-center space-x-2 text-gray-700">
+                            <Mail className="w-5 h-5 text-gray-500" />
+                            <span className="text-sm">{student.email}</span>
+                          </div>
+                          {/* Placeholder for Phone Number - Assuming we don't have this data */}
+                          
                         </div>
 
-                    </CardContent>
-                  </Card>
+                         <div className="flex items-center justify-end pt-4 border-t border-gray-100 mt-4">
+                            {student.resumeUrl && (
+                              <a href={student.resumeUrl} target="_blank" rel="noopener noreferrer">
+                                <Button variant="outline" size="sm" className="h-8 mr-2">
+                                  <FileText className="w-4 h-4 mr-1" />
+                                  Resume
+                                </Button>
+                              </a>
+                            )}
+                            <Button size="sm" className="h-8 bg-blue-600 hover:bg-blue-700">
+                              Contact
+                            </Button>
+                          </div>
+
+                      </CardContent>
+                    </Card>
+                  </Link>
                 ))}
               </div>
             </div>
