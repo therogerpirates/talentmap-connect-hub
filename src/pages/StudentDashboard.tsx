@@ -111,7 +111,7 @@ const StudentDashboard = () => {
             // Check if line is a header (contains **text** or is all caps)
             if (trimmedLine.match(/^\*\*(.*?)\*\*/) || trimmedLine === trimmedLine.toUpperCase()) {
               return (
-                <h3 key={lineIndex} className="text-lg font-semibold text-gray-900 mb-3 border-b border-gray-200 pb-1">
+                <h3 key={lineIndex} className="text-lg font-semibold text-gray-900 dark:text-white mb-3 border-b border-gray-200 dark:border-gray-700 pb-1 transition-colors duration-300">
                   {trimmedLine.replace(/\*\*(.*?)\*\*/g, '$1')}
                 </h3>
               );
@@ -121,8 +121,8 @@ const StudentDashboard = () => {
             if (trimmedLine.match(/^[-•*]\s/)) {
               return (
                 <div key={lineIndex} className="flex items-start mb-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                  <p className="text-gray-700 leading-relaxed">
+                  <div className="w-2 h-2 bg-black dark:bg-white rounded-full mt-2 mr-3 flex-shrink-0 transition-colors duration-300"></div>
+                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed transition-colors duration-300">
                     {trimmedLine.replace(/^[-•*]\s/, '')}
                   </p>
                 </div>
@@ -131,7 +131,7 @@ const StudentDashboard = () => {
             
             // Regular paragraph
             return (
-              <p key={lineIndex} className="text-gray-700 leading-relaxed mb-2">
+              <p key={lineIndex} className="text-gray-700 dark:text-gray-300 leading-relaxed mb-2 transition-colors duration-300">
                 {trimmedLine}
               </p>
             );
@@ -145,7 +145,7 @@ const StudentDashboard = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <div className="w-16 h-16 border-4 border-black border-t-transparent rounded-full animate-spin mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading your profile...</p>
         </div>
       </div>
@@ -153,20 +153,19 @@ const StudentDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-colors duration-300">
+      <header className="bg-white dark:bg-gray-900 border-b transition-colors duration-300">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <Link to="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <BookOpen className="w-5 h-5 text-white" />
+            <div className="w-8 h-8 bg-black dark:bg-white rounded-lg flex items-center justify-center transition-colors duration-300">
+              <BookOpen className="w-5 h-5 text-white dark:text-black transition-colors duration-300" />
             </div>
-            <span className="text-xl font-bold text-gray-900">TalentMap</span>
+            <span className="text-xl font-bold text-gray-900 dark:text-white transition-colors duration-300">TalentMap</span>
           </Link>
           
           <div className="flex items-center space-x-4">
-            <span className="text-sm text-gray-600">Welcome, {profileData.fullName}</span>
-            <Button variant="ghost" size="sm" onClick={handleSignOut}>
+            <span className="text-sm text-gray-600 dark:text-gray-300 transition-colors duration-300">Welcome, {profileData.fullName}</span>
+            <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-gray-900 dark:text-white hover:text-gray-800 dark:hover:text-gray-200 transition-colors duration-300">
               <LogOut className="w-4 h-4 mr-2" />
               Logout
             </Button>
@@ -176,23 +175,21 @@ const StudentDashboard = () => {
 
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
-          {/* Welcome Section */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Student Dashboard</h1>
-            <p className="text-gray-600">Manage your profile and showcase your talents to recruiters</p>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 transition-colors duration-300">Student Dashboard</h1>
+            <p className="text-gray-600 dark:text-gray-300 transition-colors duration-300">Manage your profile and showcase your talents to recruiters</p>
           </div>
 
-          {/* Dashboard Stats */}
           <div className="grid md:grid-cols-3 gap-6 mb-8">
-            <Card>
+            <Card className="bg-white dark:bg-gray-800 transition-colors duration-300">
               <CardContent className="p-6">
                 <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <User className="w-6 h-6 text-blue-600" />
+                  <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center transition-colors duration-300">
+                    <User className="w-6 h-6 text-gray-900 dark:text-white transition-colors duration-300" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Profile Status</p>
-                    <p className="text-xl font-semibold text-gray-900">
+                    <p className="text-sm text-gray-600 dark:text-gray-300 transition-colors duration-300">Profile Status</p>
+                    <p className="text-xl font-semibold text-gray-900 dark:text-white transition-colors duration-300">
                       {profileData.fullName && profileData.year && profileData.department ? 'Complete' : 'Incomplete'}
                     </p>
                   </div>
@@ -200,15 +197,15 @@ const StudentDashboard = () => {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-white dark:bg-gray-800 transition-colors duration-300">
               <CardContent className="p-6">
                 <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                    <FileText className="w-6 h-6 text-green-600" />
+                  <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center transition-colors duration-300">
+                    <FileText className="w-6 h-6 text-green-600 dark:text-green-300 transition-colors duration-300" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Resume Status</p>
-                    <p className="text-xl font-semibold text-gray-900">
+                    <p className="text-sm text-gray-600 dark:text-gray-300 transition-colors duration-300">Resume Status</p>
+                    <p className="text-xl font-semibold text-gray-900 dark:text-white transition-colors duration-300">
                       {hasResume ? 'Uploaded' : 'Not Uploaded'}
                     </p>
                   </div>
@@ -216,15 +213,15 @@ const StudentDashboard = () => {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-white dark:bg-gray-800 transition-colors duration-300">
               <CardContent className="p-6">
                 <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-                    <CheckCircle className="w-6 h-6 text-indigo-600" />
+                  <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900 rounded-lg flex items-center justify-center transition-colors duration-300">
+                    <CheckCircle className="w-6 h-6 text-indigo-600 dark:text-indigo-300 transition-colors duration-300" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Visibility</p>
-                    <p className="text-xl font-semibold text-gray-900">
+                    <p className="text-sm text-gray-600 dark:text-gray-300 transition-colors duration-300">Visibility</p>
+                    <p className="text-xl font-semibold text-gray-900 dark:text-white transition-colors duration-300">
                       {hasResume && profileData.fullName && profileData.year && profileData.department ? 'Active' : 'Hidden'}
                     </p>
                   </div>
@@ -232,83 +229,79 @@ const StudentDashboard = () => {
               </CardContent>
             </Card>
           </div>
-          <p className="text-sm text-black-250">*Complete your profile to be visible to recruiters</p>
+          <p className="text-sm text-gray-600 dark:text-gray-300 transition-colors duration-300">*Complete your profile to be visible to recruiters</p>
           
-          {/* Main Content Grid */}
           <div className="grid lg:grid-cols-2 gap-8 mt-8">
-            {/* Profile Information */}
-            <Card>
+            <Card className="bg-white dark:bg-gray-800 transition-colors duration-300">
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
+                <CardTitle className="flex items-center space-x-2 text-gray-900 dark:text-white transition-colors duration-300">
                   <User className="w-5 h-5" />
                   <span>Profile Information</span>
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-gray-600 dark:text-gray-300 transition-colors duration-300">
                   Keep your profile updated to attract the right opportunities
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {/* Static profile data display with improved design */}
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-gray-600 text-sm">Full Name:</Label>
-                      <p className="font-medium text-gray-900 text-lg leading-snug">{profileData.fullName || 'N/A'}</p>
+                      <Label className="text-gray-600 dark:text-gray-300 text-sm transition-colors duration-300">Full Name:</Label>
+                      <p className="font-medium text-gray-900 dark:text-white text-lg leading-snug transition-colors duration-300">{profileData.fullName || 'N/A'}</p>
                     </div>
 
                     <div>
-                      <Label className="text-gray-600 text-sm">Academic Year:</Label>
-                      <p className="font-medium text-gray-900 text-lg leading-snug">{profileData.year || 'N/A'}</p>
+                      <Label className="text-gray-600 dark:text-gray-300 text-sm transition-colors duration-300">Academic Year:</Label>
+                      <p className="font-medium text-gray-900 dark:text-white text-lg leading-snug transition-colors duration-300">{profileData.year || 'N/A'}</p>
                     </div>
 
                     <div className="col-span-2">
-                      <Label className="text-gray-600 text-sm">Department:</Label>
-                      <p className="font-medium text-gray-900 text-lg leading-snug">{profileData.department || 'N/A'}</p>
+                      <Label className="text-gray-600 dark:text-gray-300 text-sm transition-colors duration-300">Department:</Label>
+                      <p className="font-medium text-gray-900 dark:text-white text-lg leading-snug transition-colors duration-300">{profileData.department || 'N/A'}</p>
                     </div>
                   </div>
 
-                  {/* Add a link to the separate profile edit page */}
-                  <div className="pt-4 border-t mt-4">
+                  <div className="pt-4 border-t border-gray-200 dark:border-gray-700 mt-4 transition-colors duration-300">
                     <Link to="/profile">
-                      <Button className="w-full">Edit Profile Information</Button>
+                      <Button className="w-full bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors duration-300">
+                        Edit Profile Information
+                      </Button>
                     </Link>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Resume Upload */}
-            <Card>
+            <Card className="bg-white dark:bg-gray-800 transition-colors duration-300">
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
+                <CardTitle className="flex items-center space-x-2 text-gray-900 dark:text-white transition-colors duration-300">
                   <Upload className="w-5 h-5" />
                   <span>Resume Upload</span>
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-gray-600 dark:text-gray-300 transition-colors duration-300">
                   Upload your resume to get discovered by recruiters
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="text-gray-900 dark:text-white transition-colors duration-300">
                 <ResumeUpload onUploadSuccess={handleResumeUpload} hasExistingResume={hasResume} />
               </CardContent>
             </Card>
 
-            {/* Skills - Full Width */}
             {studentData?.skills && studentData.skills.length > 0 && hasResume && (
-              <Card className="mt-8 lg:col-span-2">
+              <Card className="mt-8 lg:col-span-2 bg-white dark:bg-gray-800 transition-colors duration-300">
                 <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
+                  <CardTitle className="flex items-center space-x-2 text-gray-900 dark:text-white transition-colors duration-300">
                     <FileText className="w-5 h-5" />
                     <span>Skills</span>
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-gray-600 dark:text-gray-300 transition-colors duration-300">
                     Key skills extracted from your resume.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
                     {studentData.skills.map((skill, index) => (
-                      <span key={index} className="bg-blue-100 text-blue-800 text-sm font-medium px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">
+                      <span key={index} className="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-medium px-2.5 py-0.5 rounded transition-colors duration-300">
                         {skill}
                       </span>
                     ))}
@@ -317,83 +310,25 @@ const StudentDashboard = () => {
               </Card>
             )}
 
-            {/* ATS Score - Add a Card for ATS Score */}
-            {studentData?.ats_score !== undefined && hasResume && (
-              <Card>
+            {studentData?.summary && hasResume && (
+              <Card className="mt-8 lg:col-span-2 bg-white dark:bg-gray-800 transition-colors duration-300">
                 <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
+                  <CardTitle className="flex items-center space-x-2 text-gray-900 dark:text-white transition-colors duration-300">
                     <FileText className="w-5 h-5" />
-                    <span>ATS Score</span>
+                    <span>Resume Summary</span>
                   </CardTitle>
-                  <CardDescription>
-                    An estimate of how well your resume might be parsed by Applicant Tracking Systems.
+                  <CardDescription className="text-gray-600 dark:text-gray-300 transition-colors duration-300">
+                    An AI-generated summary of your resume highlighting your key qualifications and experience.
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-center w-48 mx-auto">
-                    {studentData.ats_score !== undefined && (
-                      <GaugeChart
-                        id="ats-score-gauge"
-                        nrOfLevels={20}
-                        percent={studentData.ats_score / 100}
-                        arcWidth={0.3}
-                        colors={['#FF5F6D', '#FFC371', '#4CAF50']}
-                        textColor="#000000"
-                      />
-                    )}
-                    <p className="text-sm text-gray-600 mt-2">ATS Score: {studentData.ats_score}/100</p>
+                <CardContent className="prose max-w-none dark:prose-invert">
+                  <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 rounded-lg p-6 border border-gray-100 dark:border-gray-700 transition-colors duration-300">
+                    {formatResumeSummary(studentData.summary)}
                   </div>
                 </CardContent>
               </Card>
             )}
-
-            {/* Experience - Add a Card for Experience/Internship */}
-            {studentData?.has_internship !== undefined && hasResume && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <FileText className="w-5 h-5" />
-                    <span>Experience</span>
-                  </CardTitle>
-                  <CardDescription>
-                    Information about your work and internship experience.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="flex items-center">
-                    Has Internship: 
-                    {studentData.has_internship ? 
-                      <CheckCircle className="w-5 h-5 text-green-500 ml-2" /> 
-                      : 
-                      <X className="w-5 h-5 text-red-500 ml-2" />
-                    }
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-
-          {/* Resume Summary - Full Width - Move this section down */}
-          {studentData?.summary && hasResume && (
-            <Card className="mt-8 lg:col-span-2">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <FileText className="w-5 h-5" />
-                  <span>Resume Summary</span>
-                </CardTitle>
-                <CardDescription>
-                  An AI-generated summary of your resume highlighting your key qualifications and experience.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="prose max-w-none">
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-100">
-                  {formatResumeSummary(studentData.summary)}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          </div> {/* Closing div for Main Content Grid */}
-
+          </div>
         </div>
       </div>
     </div>

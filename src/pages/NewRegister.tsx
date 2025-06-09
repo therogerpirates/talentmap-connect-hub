@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -105,7 +104,7 @@ const NewRegister = () => {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center space-x-2">
-            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-black rounded-lg flex items-center justify-center">
               <BookOpen className="w-6 h-6 text-white" />
             </div>
             <span className="text-2xl font-bold text-gray-900">TalentMap</span>
@@ -128,8 +127,8 @@ const NewRegister = () => {
                   className="w-full h-24 bg-white hover:bg-gray-50 border-2 border-gray-200"
                 >
                   <div className="flex flex-col items-center space-y-2">
-                    <User className="w-12 h-12 text-blue-600" />
-                    <span className="text-lg font-medium text-blue-700">I am a Student</span>
+                    <User className="w-12 h-12 text-black" />
+                    <span className="text-lg font-medium text-black">I am a Student</span>
                     <span className="text-sm text-gray-500">Looking for opportunities</span>
                   </div>
                 </Button>
@@ -139,8 +138,8 @@ const NewRegister = () => {
                   className="w-full h-24 bg-white hover:bg-gray-50 border-2 border-gray-200"
                 >
                   <div className="flex flex-col items-center space-y-2">
-                    <Briefcase className="w-12 h-12 text-blue-600" />
-                    <span className="text-lg font-medium text-blue-700">I am a Recruiter</span>
+                    <Briefcase className="w-12 h-12 text-black" />
+                    <span className="text-lg font-medium text-black">I am a Recruiter</span>
                     <span className="text-sm text-gray-500">Looking for talent</span>
                   </div>
                 </Button>
@@ -202,7 +201,7 @@ const NewRegister = () => {
                   </Button>
                   <Button 
                     type="submit" 
-                    className="flex-1 bg-blue-600 hover:bg-blue-700"
+                    className="flex-1 bg-black hover:bg-gray-800"
                     disabled={isLoading}
                   >
                     {isLoading ? 'Creating Account...' : 'Create Account'}
@@ -214,7 +213,7 @@ const NewRegister = () => {
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
                 Already have an account?{' '}
-                <Link to="/login" className="text-blue-600 hover:text-blue-700 font-medium">
+                <Link to="/login" className="text-black hover:text-gray-800 font-medium">
                   Sign in
                 </Link>
               </p>

@@ -145,7 +145,7 @@ const AdminStudentDetail = () => {
             if (trimmedLine.match(/^[-•*]\s/)) {
               return (
                 <div key={lineIndex} className="flex items-start mb-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                  <div className="w-2 h-2 bg-black rounded-full mt-2 mr-3 flex-shrink-0"></div>
                   <p className="text-gray-700 leading-relaxed">
                     {trimmedLine.replace(/^[-•*]\s/, '')}
                   </p>
@@ -169,7 +169,7 @@ const AdminStudentDetail = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <div className="w-16 h-16 border-4 border-black border-t-transparent rounded-full animate-spin mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading student data...</p>
         </div>
       </div>
@@ -306,7 +306,7 @@ const AdminStudentDetail = () => {
               <CardContent>
                 <div className="flex flex-wrap gap-2">
                   {studentData.skills.map((skill, index) => (
-                    <span key={index} className="bg-blue-100 text-blue-800 text-sm font-medium px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">
+                    <span key={index} className="bg-gray-100 text-gray-900 text-sm font-medium px-2.5 py-0.5 rounded dark:bg-gray-800 dark:text-gray-300">
                       {skill}
                     </span>
                   ))}
@@ -328,7 +328,7 @@ const AdminStudentDetail = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="prose max-w-none">
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-100">
+              <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-6 border border-gray-100">
                 {formatResumeSummary(studentData.summary)}
               </div>
             </CardContent>

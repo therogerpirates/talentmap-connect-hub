@@ -1,4 +1,3 @@
-
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -23,7 +22,7 @@ interface StudentCardProps {
 const StudentCard = ({ student }: StudentCardProps) => {
   const getMatchScoreColor = (score: number) => {
     if (score >= 90) return 'bg-green-100 text-green-800 border-green-200';
-    if (score >= 80) return 'bg-blue-100 text-blue-800 border-blue-200';
+    if (score >= 80) return 'bg-gray-100 text-gray-900 border-gray-200';
     if (score >= 70) return 'bg-yellow-100 text-yellow-800 border-yellow-200';
     return 'bg-gray-100 text-gray-800 border-gray-200';
   };
@@ -64,7 +63,7 @@ const StudentCard = ({ student }: StudentCardProps) => {
           <h4 className="text-sm font-medium text-gray-900 mb-2">Skills & Technologies</h4>
           <div className="flex flex-wrap gap-2">
             {student.skills.map((skill, index) => (
-              <Badge key={index} variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100">
+              <Badge key={index} variant="secondary" className="bg-gray-50 text-gray-900 hover:bg-gray-100">
                 {skill}
               </Badge>
             ))}
@@ -82,7 +81,7 @@ const StudentCard = ({ student }: StudentCardProps) => {
               <FileText className="w-4 h-4" />
               <span>View Resume</span>
             </Button>
-            <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+            <Button size="sm" className="bg-black hover:bg-gray-800">
               Contact
             </Button>
           </div>

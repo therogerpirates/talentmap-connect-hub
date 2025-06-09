@@ -128,22 +128,22 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4 transition-colors duration-300">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center space-x-2">
-            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-              <BookOpen className="w-6 h-6 text-white" />
+            <div className="w-10 h-10 bg-black dark:bg-white rounded-lg flex items-center justify-center transition-colors duration-300">
+              <BookOpen className="w-6 h-6 text-white dark:text-black transition-colors duration-300" />
             </div>
-            <span className="text-2xl font-bold text-gray-900">TalentMap</span>
+            <span className="text-2xl font-bold text-gray-900 dark:text-white transition-colors duration-300">TalentMap</span>
           </Link>
         </div>
 
-        <Card className="shadow-xl border-0">
+        <Card className="shadow-xl border-0 bg-white dark:bg-gray-800 transition-colors duration-300">
           <CardHeader className="text-center pb-6">
-            <CardTitle className="text-2xl font-bold text-gray-900">Welcome Back</CardTitle>
-            <CardDescription className="text-gray-600">
+            <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white transition-colors duration-300">Welcome Back</CardTitle>
+            <CardDescription className="text-gray-600 dark:text-gray-300 transition-colors duration-300">
               Sign in to your TalentMap account
             </CardDescription>
           </CardHeader>
@@ -151,7 +151,7 @@ const Login = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="email" className="text-gray-900 dark:text-white transition-colors duration-300">Email Address</Label>
                 <Input
                   id="email"
                   name="email"
@@ -160,12 +160,12 @@ const Login = () => {
                   value={formData.email}
                   onChange={handleInputChange}
                   placeholder="Enter your email"
-                  className="mt-1"
+                  className="mt-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 transition-colors duration-300"
                 />
               </div>
               
               <div>
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-gray-900 dark:text-white transition-colors duration-300">Password</Label>
                 <Input
                   id="password"
                   name="password"
@@ -174,39 +174,39 @@ const Login = () => {
                   value={formData.password}
                   onChange={handleInputChange}
                   placeholder="Enter your password"
-                  className="mt-1"
+                  className="mt-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 transition-colors duration-300"
                 />
               </div>
 
               <div className="flex justify-end">
                 <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button variant="link" className="text-sm text-blue-600 hover:text-blue-700">
+                    <Button variant="link" className="text-sm text-gray-900 dark:text-white hover:text-gray-800 dark:hover:text-gray-200 transition-colors duration-300">
                       Forgot Password?
                     </Button>
                   </DialogTrigger>
-                  <DialogContent>
+                  <DialogContent className="bg-white dark:bg-gray-800 transition-colors duration-300">
                     <DialogHeader>
-                      <DialogTitle>Reset Password</DialogTitle>
-                      <DialogDescription>
+                      <DialogTitle className="text-gray-900 dark:text-white transition-colors duration-300">Reset Password</DialogTitle>
+                      <DialogDescription className="text-gray-600 dark:text-gray-300 transition-colors duration-300">
                         Enter your email address and we'll send you a link to reset your password.
                       </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handlePasswordReset} className="space-y-4">
                       <div>
-                        <Label htmlFor="resetEmail">Email Address</Label>
+                        <Label htmlFor="resetEmail" className="text-gray-900 dark:text-white transition-colors duration-300">Email Address</Label>
                         <Input
                           id="resetEmail"
                           type="email"
                           value={resetEmail}
                           onChange={(e) => setResetEmail(e.target.value)}
                           placeholder="Enter your email"
-                          className="mt-1"
+                          className="mt-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 transition-colors duration-300"
                         />
                       </div>
                       <Button 
                         type="submit" 
-                        className="w-full"
+                        className="w-full bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors duration-300"
                         disabled={isResetLoading}
                       >
                         {isResetLoading ? 'Sending...' : 'Send Reset Link'}
@@ -218,22 +218,21 @@ const Login = () => {
 
               <Button 
                 type="submit" 
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5"
-                size="lg"
+                className="w-full bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors duration-300"
                 disabled={isLoading}
               >
-                {isLoading ? 'Signing In...' : 'Sign In'}
+                {isLoading ? 'Signing in...' : 'Sign In'}
               </Button>
+
+              <div className="text-center">
+                <p className="text-sm text-gray-600 dark:text-gray-300 transition-colors duration-300">
+                  Don't have an account?{' '}
+                  <Link to="/new-register" className="text-black dark:text-white hover:text-gray-800 dark:hover:text-gray-200 transition-colors duration-300">
+                    Sign up
+                  </Link>
+                </p>
+              </div>
             </form>
-            
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
-                Don't have an account?{' '}
-                <Link to="/new-register" className="text-blue-600 hover:text-blue-700 font-medium">
-                  Create one
-                </Link>
-              </p>
-            </div>
           </CardContent>
         </Card>
       </div>

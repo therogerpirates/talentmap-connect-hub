@@ -78,7 +78,7 @@ const ResetPassword = () => {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center space-x-2">
-            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-black rounded-lg flex items-center justify-center">
               <Lock className="w-6 h-6 text-white" />
             </div>
             <span className="text-2xl font-bold text-gray-900">TalentMap</span>
@@ -125,7 +125,7 @@ const ResetPassword = () => {
 
               <Button 
                 type="submit" 
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5"
+                className="w-full bg-black hover:bg-gray-800 text-white py-2.5"
                 size="lg"
                 disabled={isLoading}
               >

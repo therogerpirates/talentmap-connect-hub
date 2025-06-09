@@ -16,15 +16,18 @@ interface SearchResultStudent {
   // Add other fields you might need from the search results
 }
 
-export const useStudentsSearch = (searchQuery?: string) => {
+export const useStudentsSearch = (searchQuery?: string, selectedSkills: string[] = []) => {
   return useQuery({
-    queryKey: ['students-search', searchQuery],
+    queryKey: ['students-search', searchQuery, selectedSkills],
     queryFn: async () => {
-      if (!searchQuery) return [];
+      if (!searchQuery && selectedSkills.length === 0) return [];
       const response = await fetch('http://localhost:8000/search-students/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: searchQuery }),
+        body: JSON.stringify({ 
+          query: searchQuery,
+          skills: selectedSkills 
+        }),
       });
       if (!response.ok) {
         throw new Error('Failed to fetch matching students');
