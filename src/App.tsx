@@ -16,6 +16,8 @@ import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 import ProfilePage from './pages/ProfilePage';
 import AdminStudentDetail from './pages/AdminStudentDetail';
+import CreateSession from './pages/CreateSession';
+import SessionDetail from './pages/SessionDetail';
 
 const queryClient = new QueryClient();
 
@@ -55,6 +57,22 @@ const App = () => (
                 element={
                   <ProtectedRoute role="admin">
                     <AdminStudentDetail />
+                  </ProtectedRoute>
+                }
+              />
+              <Route 
+                path="/create-session" 
+                element={
+                  <ProtectedRoute role="admin">
+                    <CreateSession />
+                  </ProtectedRoute>
+                }
+              />
+              <Route 
+                path="/sessions/:sessionId" 
+                element={
+                  <ProtectedRoute role="admin">
+                    <SessionDetail />
                   </ProtectedRoute>
                 }
               />

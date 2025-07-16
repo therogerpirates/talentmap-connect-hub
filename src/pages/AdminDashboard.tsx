@@ -1,17 +1,20 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { BookOpen, Search, Users, FileText, LogOut, Filter, Mail, MoreHorizontal, Download, X } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { BookOpen, Search, Users, FileText, LogOut, Filter, Mail, MoreHorizontal, Download, X, Plus, Calendar, Target } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudentsSearch } from '@/hooks/useStudentsSearch';
+import { useHiringSessions } from '@/hooks/useHiringSessions';
 import StudentCard from '@/components/StudentCard';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState(() => {
     const savedQuery = localStorage.getItem('adminSearchQuery');
     return savedQuery || '';
@@ -24,6 +27,7 @@ const AdminDashboard = () => {
   const [shortlistedCandidates, setShortlistedCandidates] = useState<string[]>([]);
   const { signOut, profile, user } = useAuth();
   const { toast } = useToast();
+  const { data: sessions } = useHiringSessions();
   const [fullName, setFullName] = useState('');
   const [persistedSearchResults, setPersistedSearchResults] = useState<any[]>(() => {
     const savedResults = localStorage.getItem('adminSearchResults');
@@ -450,27 +454,156 @@ const AdminDashboard = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
           {/* Welcome Section */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Recruiter Dashboard</h1>
-            <p className="text-gray-600">Find the perfect candidates with AI-powered search</p>
+          <div className="mb-8 flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Recruiter Dashboard</h1>
+              <p className="text-gray-600">Manage hiring sessions and find the perfect candidates</p>
+            </div>
+            <Button onClick={() => navigate('/create-session')} className="bg-black hover:bg-gray-800">
+              <Plus className="w-4 h-4 mr-2" />
+              Create Session
+            </Button>
           </div>
 
           {/* Dashboard Stats */}
-          <div className="grid md:grid-cols-3 gap-6 mb-8">
+          <div className="grid md:grid-cols-4 gap-6 mb-8">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-2">
+                  <Calendar className="h-5 w-5 text-blue-500" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Active Sessions</p>
+                    <p className="text-2xl font-bold">{sessions?.filter(s => s.status === 'active').length || 0}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-2">
+                  <Target className="h-5 w-5 text-green-500" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Sessions</p>
+                    <p className="text-2xl font-bold">{sessions?.length || 0}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-2">
+                  <Users className="h-5 w-5 text-purple-500" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Hires</p>
+                    <p className="text-2xl font-bold">{sessions?.reduce((sum, s) => sum + s.current_hires, 0) || 0}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-2">
+                  <Search className="h-5 w-5 text-orange-500" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Search Results</p>
+                    <p className="text-2xl font-bold">{persistedSearchResults?.length || 0}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Search Section */}
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Search className="w-5 h-5" />
-                <span>AI-Powered Candidate Search</span>
-              </CardTitle>
-              <CardDescription>
-                Describe the skills, experience, or qualifications you're looking for in natural language
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+          <Tabs defaultValue="sessions" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="sessions">Hiring Sessions</TabsTrigger>
+              <TabsTrigger value="search">Student Search</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="sessions" className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {sessions?.map((session) => (
+                  <Card key={session.id} className="cursor-pointer hover:shadow-md transition-shadow"
+                        onClick={() => navigate(`/sessions/${session.id}`)}>
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <CardTitle className="text-lg">{session.title}</CardTitle>
+                          <p className="text-gray-600 mt-1">{session.role}</p>
+                        </div>
+                        <Badge variant={session.status === 'active' ? 'default' : 'secondary'}>
+                          {session.status}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Target Hires:</span>
+                          <span className="font-medium">{session.target_hires}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Current Hires:</span>
+                          <span className="font-medium text-green-600">{session.current_hires}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Created:</span>
+                          <span className="font-medium">{new Date(session.created_at).toLocaleDateString()}</span>
+                        </div>
+                        
+                        {session.requirements?.required_skills?.length > 0 && (
+                          <div>
+                            <p className="text-sm font-medium mb-2">Required Skills:</p>
+                            <div className="flex flex-wrap gap-1">
+                              {session.requirements.required_skills.slice(0, 3).map((skill: string, index: number) => (
+                                <Badge key={index} variant="outline" className="text-xs">
+                                  {skill}
+                                </Badge>
+                              ))}
+                              {session.requirements.required_skills.length > 3 && (
+                                <Badge variant="outline" className="text-xs">
+                                  +{session.requirements.required_skills.length - 3} more
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                
+                {(!sessions || sessions.length === 0) && (
+                  <Card className="col-span-full">
+                    <CardContent className="p-8 text-center">
+                      <Calendar className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                      <h3 className="font-semibold mb-2">No hiring sessions yet</h3>
+                      <p className="text-gray-600 mb-4">Create your first hiring session to start finding candidates.</p>
+                      <Button onClick={() => navigate('/create-session')} className="bg-black hover:bg-gray-800">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Session
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="search" className="space-y-6">
+              {/* Search Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Search className="w-5 h-5" />
+                    <span>AI-Powered Candidate Search</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Describe the skills, experience, or qualifications you're looking for in natural language
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
               <form onSubmit={handleSearch} className="space-y-4">
                 <div className="flex space-x-4">
                   <Input
@@ -695,6 +828,8 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
           )}
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>
