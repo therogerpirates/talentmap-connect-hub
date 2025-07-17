@@ -17,9 +17,11 @@ interface Student {
 
 interface StudentCardProps {
   student: Student;
+  isShortlisted?: boolean;
+  onShortlistToggle?: () => void;
 }
 
-const StudentCard = ({ student }: StudentCardProps) => {
+const StudentCard = ({ student, isShortlisted, onShortlistToggle }: StudentCardProps) => {
   const getMatchScoreColor = (score: number) => {
     if (score >= 90) return 'bg-green-100 text-green-800 border-green-200';
     if (score >= 80) return 'bg-gray-100 text-gray-900 border-gray-200';

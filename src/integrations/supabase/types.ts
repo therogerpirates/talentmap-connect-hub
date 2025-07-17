@@ -276,13 +276,7 @@ export type Database = {
         Returns: unknown
       }
       match_students_by_embedding: {
-        Args:
-          | { query_embedding: string; match_count?: number }
-          | {
-              query_embedding: string
-              match_count?: number
-              search_by?: string
-            }
+        Args: { query_embedding: string; match_count?: number }
         Returns: {
           id: string
           email: string
