@@ -5,10 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useHiringSessions } from '@/hooks/useHiringSessions';
 import { useSessionCandidates, useUpdateCandidateStatus } from '@/hooks/useSessionCandidates';
-import { ArrowLeft, Users, Target, Calendar } from 'lucide-react';
+import { ArrowLeft, Users, Target, Calendar, Edit2, Save, X } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { Layout } from '@/components/Layout';
 
 export default function SessionDetail() {
@@ -22,6 +25,18 @@ export default function SessionDetail() {
 
   const session = sessions?.find(s => s.id === sessionId);
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editableSession, setEditableSession] = useState({
+    required_skills: session?.requirements?.required_skills || [],
+    eligibility_criteria: {
+      min_gpa: session?.eligibility_criteria?.min_gpa || '',
+      min_tenth_percentage: session?.eligibility_criteria?.min_tenth_percentage || '',
+      min_twelfth_percentage: session?.eligibility_criteria?.min_twelfth_percentage || '',
+    },
+    eligible_years: session?.eligibility_criteria?.eligible_years || [],
+  });
+  const [newSkill, setNewSkill] = useState('');
+  const [newYear, setNewYear] = useState('');
 
   const filteredCandidates = candidates?.filter(candidate => 
     selectedStatus === 'all' || candidate.status === selectedStatus
@@ -54,6 +69,73 @@ export default function SessionDetail() {
         variant: "destructive",
       });
     }
+  };
+
+  const handleSaveSession = async () => {
+    try {
+      const { error } = await supabase
+        .from('hiring_sessions')
+        .update({
+          requirements: {
+            required_skills: editableSession.required_skills,
+          },
+          eligibility_criteria: {
+            ...editableSession.eligibility_criteria,
+            eligible_years: editableSession.eligible_years,
+          },
+        })
+        .eq('id', sessionId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Session details updated successfully",
+      });
+      setIsEditing(false);
+      window.location.reload(); // Refresh to show updated data
+    } catch (error) {
+      console.error('Error updating session:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update session details",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const addSkill = () => {
+    if (newSkill.trim() && !editableSession.required_skills.includes(newSkill.trim())) {
+      setEditableSession(prev => ({
+        ...prev,
+        required_skills: [...prev.required_skills, newSkill.trim()]
+      }));
+      setNewSkill('');
+    }
+  };
+
+  const removeSkill = (skillToRemove: string) => {
+    setEditableSession(prev => ({
+      ...prev,
+      required_skills: prev.required_skills.filter(skill => skill !== skillToRemove)
+    }));
+  };
+
+  const addYear = () => {
+    if (newYear.trim() && !editableSession.eligible_years.includes(newYear.trim())) {
+      setEditableSession(prev => ({
+        ...prev,
+        eligible_years: [...prev.eligible_years, newYear.trim()]
+      }));
+      setNewYear('');
+    }
+  };
+
+  const removeYear = (yearToRemove: string) => {
+    setEditableSession(prev => ({
+      ...prev,
+      eligible_years: prev.eligible_years.filter(year => year !== yearToRemove)
+    }));
   };
 
   const getStatusBadgeVariant = (status: string) => {
@@ -265,9 +347,30 @@ export default function SessionDetail() {
           <TabsContent value="details" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Session Information</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Session Information</CardTitle>
+                  <div className="flex gap-2">
+                    {!isEditing ? (
+                      <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                        <Edit2 className="h-4 w-4 mr-2" />
+                        Edit
+                      </Button>
+                    ) : (
+                      <>
+                        <Button variant="outline" size="sm" onClick={() => setIsEditing(false)}>
+                          <X className="h-4 w-4 mr-2" />
+                          Cancel
+                        </Button>
+                        <Button size="sm" onClick={handleSaveSession}>
+                          <Save className="h-4 w-4 mr-2" />
+                          Save
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
                 <div>
                   <h4 className="font-medium mb-2">Description</h4>
                   <p className="text-muted-foreground">{session.description || 'No description provided'}</p>
@@ -275,62 +378,154 @@ export default function SessionDetail() {
 
                 <div>
                   <h4 className="font-medium mb-2">Required Skills</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {session.requirements.required_skills?.map((skill: string, index: number) => (
-                      <Badge key={index} variant="default">{skill}</Badge>
-                    )) || <span className="text-muted-foreground">None specified</span>}
-                  </div>
+                  {!isEditing ? (
+                    <div className="flex flex-wrap gap-2">
+                      {session.requirements?.required_skills?.map((skill: string, index: number) => (
+                        <Badge key={index} variant="default">{skill}</Badge>
+                      )) || <span className="text-muted-foreground">None specified</span>}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap gap-2">
+                        {editableSession.required_skills.map((skill, index) => (
+                          <div key={index} className="flex items-center gap-1 bg-primary/10 px-2 py-1 rounded">
+                            <span className="text-sm">{skill}</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-4 w-4 p-0"
+                              onClick={() => removeSkill(skill)}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Add required skill"
+                          value={newSkill}
+                          onChange={(e) => setNewSkill(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && addSkill()}
+                        />
+                        <Button onClick={addSkill}>Add</Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                <div>
-                  <h4 className="font-medium mb-2">Preferred Skills</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {session.requirements.preferred_skills?.map((skill: string, index: number) => (
-                      <Badge key={index} variant="secondary">{skill}</Badge>
-                    )) || <span className="text-muted-foreground">None specified</span>}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <h4 className="font-medium mb-2">Eligibility Criteria</h4>
-                    <ul className="text-sm text-muted-foreground space-y-1">
-                      {session.eligibility_criteria.min_gpa && (
-                        <li>Minimum GPA: {session.eligibility_criteria.min_gpa}</li>
-                      )}
-                      {session.eligibility_criteria.min_tenth_percentage && (
-                        <li>Minimum 10th %: {session.eligibility_criteria.min_tenth_percentage}</li>
-                      )}
-                      {session.eligibility_criteria.min_twelfth_percentage && (
-                        <li>Minimum 12th %: {session.eligibility_criteria.min_twelfth_percentage}</li>
-                      )}
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h4 className="font-medium mb-2">Eligible Years & Departments</h4>
-                    <div className="space-y-2">
-                      {session.eligibility_criteria.eligible_years?.length > 0 && (
+                    <h4 className="font-medium mb-3">Eligibility Criteria</h4>
+                    {!isEditing ? (
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        {session.eligibility_criteria?.min_gpa && (
+                          <li>Minimum GPA: {session.eligibility_criteria.min_gpa}</li>
+                        )}
+                        {session.eligibility_criteria?.min_tenth_percentage && (
+                          <li>Minimum 10th %: {session.eligibility_criteria.min_tenth_percentage}</li>
+                        )}
+                        {session.eligibility_criteria?.min_twelfth_percentage && (
+                          <li>Minimum 12th %: {session.eligibility_criteria.min_twelfth_percentage}</li>
+                        )}
+                      </ul>
+                    ) : (
+                      <div className="space-y-3">
                         <div>
-                          <p className="text-sm font-medium">Years:</p>
+                          <Label htmlFor="min_gpa">Minimum GPA</Label>
+                          <Input
+                            id="min_gpa"
+                            type="number"
+                            step="0.1"
+                            placeholder="e.g., 7.0"
+                            value={editableSession.eligibility_criteria.min_gpa}
+                            onChange={(e) => setEditableSession(prev => ({
+                              ...prev,
+                              eligibility_criteria: {
+                                ...prev.eligibility_criteria,
+                                min_gpa: e.target.value
+                              }
+                            }))}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="min_tenth">Minimum 10th %</Label>
+                          <Input
+                            id="min_tenth"
+                            type="number"
+                            placeholder="e.g., 85"
+                            value={editableSession.eligibility_criteria.min_tenth_percentage}
+                            onChange={(e) => setEditableSession(prev => ({
+                              ...prev,
+                              eligibility_criteria: {
+                                ...prev.eligibility_criteria,
+                                min_tenth_percentage: e.target.value
+                              }
+                            }))}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="min_twelfth">Minimum 12th %</Label>
+                          <Input
+                            id="min_twelfth"
+                            type="number"
+                            placeholder="e.g., 80"
+                            value={editableSession.eligibility_criteria.min_twelfth_percentage}
+                            onChange={(e) => setEditableSession(prev => ({
+                              ...prev,
+                              eligibility_criteria: {
+                                ...prev.eligibility_criteria,
+                                min_twelfth_percentage: e.target.value
+                              }
+                            }))}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium mb-3">Eligible Years</h4>
+                    {!isEditing ? (
+                      <div>
+                        {session.eligibility_criteria?.eligible_years?.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
                             {session.eligibility_criteria.eligible_years.map((year: string, index: number) => (
                               <Badge key={index} variant="outline">{year}</Badge>
                             ))}
                           </div>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">None specified</span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap gap-2">
+                          {editableSession.eligible_years.map((year, index) => (
+                            <div key={index} className="flex items-center gap-1 bg-secondary/50 px-2 py-1 rounded">
+                              <span className="text-sm">{year}</span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-4 w-4 p-0"
+                                onClick={() => removeYear(year)}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ))}
                         </div>
-                      )}
-                      {session.eligibility_criteria.eligible_departments?.length > 0 && (
-                        <div>
-                          <p className="text-sm font-medium">Departments:</p>
-                          <div className="flex flex-wrap gap-1">
-                            {session.eligibility_criteria.eligible_departments.map((dept: string, index: number) => (
-                              <Badge key={index} variant="outline">{dept}</Badge>
-                            ))}
-                          </div>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Add eligible year (e.g., 2024, 3rd Year)"
+                            value={newYear}
+                            onChange={(e) => setNewYear(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && addYear()}
+                          />
+                          <Button onClick={addYear}>Add</Button>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
