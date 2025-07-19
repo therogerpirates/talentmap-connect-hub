@@ -88,30 +88,38 @@ export const StudentSearch = ({ onAddToSession, selectedSessionId }: StudentSear
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Search Form */}
-      <Card className="glass-card border-0 shadow-card">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Search className="h-5 w-5 text-primary" />
-            <span>Search Students</span>
+      <Card className="glass-panel border-0 shadow-glass relative overflow-hidden">
+        <div className="absolute inset-0 gradient-glass opacity-30"></div>
+        <CardHeader className="relative z-10">
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="h-12 w-12 gradient-primary rounded-2xl flex items-center justify-center shadow-glow">
+                <Search className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <span className="text-2xl font-bold">Student Search</span>
+                <p className="text-muted-foreground text-sm">Find and recruit top talent</p>
+              </div>
+            </div>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <form onSubmit={handleSearch} className="space-y-4">
-            <div className="space-y-2">
+        <CardContent className="space-y-6 relative z-10">
+          <form onSubmit={handleSearch} className="space-y-6">
+            <div className="space-y-3">
               <Input
                 placeholder="Describe the role or skills you're looking for..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="text-base"
+                className="text-lg py-4 glass-button border-primary/30 focus:border-primary/50 transition-all duration-300"
               />
             </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center space-x-2">
-                <Filter className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Skills Filter</span>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3 glass-button px-4 py-2 rounded-lg">
+                <Filter className="h-5 w-5 text-primary" />
+                <span className="text-base font-medium">Skills Filter</span>
               </div>
               
               <Input
@@ -119,7 +127,7 @@ export const StudentSearch = ({ onAddToSession, selectedSessionId }: StudentSear
                 value={skillInput}
                 onChange={(e) => setSkillInput(e.target.value)}
                 onKeyDown={handleSkillInputKeyDown}
-                className="text-sm"
+                className="text-base py-3 glass-button border-primary/30 focus:border-primary/50 transition-all duration-300"
               />
 
               {selectedSkills.length > 0 && (
@@ -160,32 +168,33 @@ export const StudentSearch = ({ onAddToSession, selectedSessionId }: StudentSear
               )}
             </div>
 
-            <Button 
-              type="submit" 
-              disabled={isSearching}
-              className="w-full gradient-primary text-white border-0"
-            >
-              {isSearching ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Searching...
-                </>
-              ) : (
-                <>
-                  <Search className="h-4 w-4 mr-2" />
-                  Search Students
-                </>
-              )}
-            </Button>
+              <Button 
+                type="submit" 
+                disabled={isSearching}
+                className="w-full gradient-primary text-white border-0 shadow-glow hover:scale-105 transition-all duration-300 py-4 text-lg font-semibold"
+              >
+                {isSearching ? (
+                  <>
+                    <Loader2 className="h-5 w-5 mr-3 animate-spin" />
+                    Searching for talent...
+                  </>
+                ) : (
+                  <>
+                    <Search className="h-5 w-5 mr-3" />
+                    Search Students
+                  </>
+                )}
+              </Button>
           </form>
         </CardContent>
       </Card>
 
       {/* Search Results */}
       {searchResults && searchResults.length > 0 && (
-        <Card className="glass-card border-0 shadow-card">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Search Results ({searchResults.length})</CardTitle>
+        <Card className="glass-panel border-0 shadow-glass relative overflow-hidden">
+          <div className="absolute inset-0 gradient-glass opacity-20"></div>
+          <CardHeader className="flex flex-row items-center justify-between relative z-10">
+            <CardTitle className="text-2xl font-bold">Search Results ({searchResults.length})</CardTitle>
             <div className="flex space-x-2">
               {shortlistedCandidates.length > 0 && (
                 <Badge variant="secondary" className="px-3 py-1">
@@ -198,21 +207,21 @@ export const StudentSearch = ({ onAddToSession, selectedSessionId }: StudentSear
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {searchResults.map((student) => (
-                <div key={student.id} className="relative">
+          <CardContent className="relative z-10">
+            <div className="grid md:grid-cols-2 gap-6">
+              {searchResults.map((student, index) => (
+                <div key={student.id} className="relative fade-in-up" style={{animationDelay: `${0.05 * index}s`}}>
                   <StudentCard
                     student={student}
                     isShortlisted={shortlistedCandidates.includes(student.id)}
                     onShortlistToggle={() => handleShortlistToggle(student.id)}
                   />
                   {onAddToSession && selectedSessionId && (
-                    <div className="absolute top-2 right-2">
+                    <div className="absolute top-4 right-4">
                       <Button
                         size="sm"
                         onClick={() => handleAddToSession(student.id)}
-                        className="gradient-primary text-white border-0 shadow-lg"
+                        className="gradient-primary text-white border-0 shadow-glow hover:scale-110 transition-transform duration-300"
                       >
                         <UserPlus className="h-4 w-4" />
                       </Button>
@@ -226,12 +235,12 @@ export const StudentSearch = ({ onAddToSession, selectedSessionId }: StudentSear
       )}
 
       {searchResults && searchResults.length === 0 && (
-        <Card className="glass-card border-0 shadow-card">
-          <CardContent className="py-12 text-center">
-            <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">No students found</h3>
-            <p className="text-muted-foreground">
-              Try adjusting your search query or skill filters
+        <Card className="glass-panel border-0 shadow-glass">
+          <CardContent className="py-16 text-center">
+            <Search className="h-16 w-16 text-primary mx-auto mb-6 opacity-50 float-animation" />
+            <h3 className="text-2xl font-bold mb-3">No students found</h3>
+            <p className="text-muted-foreground text-lg max-w-md mx-auto">
+              Try adjusting your search query or skill filters to discover more candidates
             </p>
           </CardContent>
         </Card>

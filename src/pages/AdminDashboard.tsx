@@ -86,9 +86,16 @@ const AdminDashboard = () => {
   const recentSessions = sessions?.slice(0, 6) || [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 relative overflow-hidden">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 gradient-primary opacity-10 rounded-full blur-3xl float-animation"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-48 h-48 gradient-accent opacity-10 rounded-full blur-3xl float-animation" style={{animationDelay: '2s'}}></div>
+        <div className="absolute top-1/2 left-1/2 w-32 h-32 gradient-glass opacity-20 rounded-full blur-2xl float-animation" style={{animationDelay: '4s'}}></div>
+      </div>
+      
       {/* Modern Header */}
-      <header className="bg-card/80 backdrop-blur-md border-b border-border/50 sticky top-0 z-50">
+      <header className="glass-panel backdrop-blur-xl border-b border-white/15 sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
           <div className="flex justify-between items-center">
             <Link to="/" className="flex items-center space-x-3 group">
@@ -125,64 +132,69 @@ const AdminDashboard = () => {
         </div>
       </header>
 
-      <div className="container mx-auto px-6 py-8">
+      <div className="container mx-auto px-6 py-8 relative z-10">
         <div className="max-w-7xl mx-auto">
           {/* Hero Section */}
-          <div className="mb-8 relative overflow-hidden">
-            <div className="absolute inset-0 gradient-accent opacity-50 rounded-2xl" />
-            <div className="relative p-8 rounded-2xl glass-card border-0 shadow-card">
-              <div className="flex flex-col md:flex-row items-start md:items-center justify-between">
-                <div className="flex-1 mb-6 md:mb-0">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <Sparkles className="h-6 w-6 text-primary animate-pulse" />
-                    <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-                      Welcome back, {fullName?.split(' ')[0] || 'Recruiter'}!
-                    </h1>
-                  </div>
-                  <p className="text-lg text-muted-foreground max-w-2xl">
-                    Discover exceptional talent, manage hiring sessions, and build your dream team with AI-powered candidate matching.
-                  </p>
+          <div className="mb-12 relative overflow-hidden fade-in-up">
+            <div className="glass-panel p-10 text-center relative overflow-hidden">
+              <div className="absolute inset-0 gradient-glass opacity-50"></div>
+              <div className="relative z-10">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between">
+                  <div className="flex-1 mb-6 md:mb-0">
+                    <div className="flex items-center justify-center space-x-3 mb-4">
+                      <Sparkles className="h-8 w-8 text-primary animate-pulse" />
+                      <h1 className="text-5xl md:text-6xl font-bold gradient-primary bg-clip-text text-transparent tracking-tight">
+                        Welcome back, {fullName?.split(' ')[0] || 'Recruiter'}!
+                      </h1>
+                    </div>
+                    <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+                      Streamline your hiring process with AI-powered candidate matching and intelligent analytics. Discover exceptional talent and build your dream team.
+                    </p>
                   
-                  <div className="flex items-center space-x-6 mt-4">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-                      <span className="text-sm text-muted-foreground">
-                        {activeSessions.length} active sessions
-                      </span>
+                    <div className="flex items-center justify-center space-x-8 mt-8">
+                      <div className="flex items-center space-x-3 glass-button px-4 py-2 rounded-lg">
+                        <div className="w-4 h-4 bg-accent rounded-full animate-pulse shadow-glow" />
+                        <span className="text-sm font-medium text-foreground">
+                          {activeSessions.length} active sessions
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-3 glass-button px-4 py-2 rounded-lg">
+                        <Calendar className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-medium text-foreground">
+                          {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">
-                        {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                      </span>
-                    </div>
-                  </div>
                 </div>
                 
-                <div className="flex flex-col space-y-3">
-                  <Button 
-                    onClick={() => navigate('/create-session')} 
-                    className="gradient-primary text-white border-0 shadow-glow hover:scale-105 transition-transform duration-300"
-                    size="lg"
-                  >
-                    <Plus className="w-5 h-5 mr-2" />
-                    Create New Session
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setSelectedTab('search')}
-                    className="border-primary/20 hover:bg-primary/5"
-                  >
-                    <Search className="w-4 h-4 mr-2" />
-                    Search Candidates
-                  </Button>
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
+                    <Button 
+                      onClick={() => navigate('/create-session')} 
+                      className="gradient-primary text-white border-0 shadow-glow hover:scale-105 transition-all duration-300 px-10 py-4 text-lg font-semibold"
+                      size="lg"
+                    >
+                      <Plus className="w-6 h-6 mr-3" />
+                      Create New Session
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setSelectedTab('search')}
+                      className="glass-button border-primary/30 text-primary hover:bg-primary/10 px-10 py-4 text-lg font-semibold"
+                      size="lg"
+                    >
+                      <Search className="w-6 h-6 mr-3" />
+                      Search Candidates
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Dashboard Stats */}
-          <DashboardStats sessions={sessions} />
+          <div className="mb-12 slide-in-left" style={{animationDelay: '0.2s'}}>
+            <DashboardStats sessions={sessions} />
+          </div>
 
           {/* Main Content Tabs */}
           <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
