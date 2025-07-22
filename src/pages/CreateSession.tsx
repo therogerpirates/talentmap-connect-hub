@@ -114,7 +114,8 @@ export default function CreateSession() {
               </div>
 
               <div className="flex gap-4">
-                <Button type="submit" disabled={createSession.isPending}>
+                <Button type="submit" disabled={createSession.isPending}
+                        className="gradient-primary text-white border-0 shadow-glow hover:scale-105 transition-all duration-300 px-5 py-4 text-lg font-semibold">
                   {createSession.isPending ? 'Creating...' : 'Create Session'}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => navigate('/admin-dashboard')}>

@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Search, Upload, BookOpen } from 'lucide-react';
 import { Layout } from '@/components/Layout';
+import TitledCard from '../components/TitledCard';
 
 const Index = () => {
   return (
@@ -21,72 +22,54 @@ const Index = () => {
             
             <div className="grid md:grid-cols-2 gap-8 mt-16">
               {/* Student Card */}
-              <Card className="hover:shadow-xl transition-all duration-300 border-0 shadow-lg bg-white dark:bg-gray-800">
-                <CardHeader className="text-center pb-4">
-                  <div className="w-16 h-16 bg-black dark:bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 transition-colors duration-300">
-                    <Users className="w-8 h-8 text-white dark:text-black transition-colors duration-300" />
-                  </div>
-                  <CardTitle className="text-2xl text-gray-900 dark:text-white transition-colors duration-300">For Students</CardTitle>
-                  <CardDescription className="text-gray-600 dark:text-gray-300 transition-colors duration-300">
-                    Showcase your skills and connect with amazing opportunities
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="text-center">
-                  <ul className="space-y-3 mb-6 text-left max-w-xs mx-auto">
-                    <li className="flex items-center text-gray-700 dark:text-gray-300 transition-colors duration-300">
-                      <div className="w-2 h-2 bg-black dark:bg-white rounded-full mr-3 transition-colors duration-300"></div>
-                      Create your profile
-                    </li>
-                    <li className="flex items-center text-gray-700 dark:text-gray-300 transition-colors duration-300">
-                      <div className="w-2 h-2 bg-black dark:bg-white rounded-full mr-3 transition-colors duration-300"></div>
-                      Upload your resume
-                    </li>
-                    <li className="flex items-center text-gray-700 dark:text-gray-300 transition-colors duration-300">
-                      <div className="w-2 h-2 bg-black dark:bg-white rounded-full mr-3 transition-colors duration-300"></div>
-                      Get discovered by recruiters
-                    </li>
-                  </ul>
-                  <Link to="/new-register">
-                    <Button size="lg" className="w-full bg-black dark:bg-white hover:bg-gray-800 dark:hover:bg-gray-200 text-white dark:text-black transition-colors duration-300">
-                      Join as Student
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
+              <TitledCard containerHeight="100%" containerWidth="100%">
+                <Card className="h-full w-full border-0 shadow-lg bg-white dark:bg-gray-800">
+                  <CardHeader className="text-center pb-4">
+                    <CardTitle className="text-2xl text-gray-900 dark:text-white">For Students</CardTitle>
+                    <CardDescription className="text-gray-600 dark:text-gray-300">
+                      Showcase your skills and connect with amazing opportunities
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="text-center">
+                    <ul className="space-y-3 mb-6 text-left max-w-xs mx-auto">
+                      <li className="text-gray-700 dark:text-gray-300">Create your profile</li>
+                      <li className="text-gray-700 dark:text-gray-300">Upload your resume</li>
+                      <li className="text-gray-700 dark:text-gray-300">Get discovered by recruiters</li>
+                    </ul>
+                    <Link to="/new-register">
+                      <Button size="lg" className="w-full bg-black dark:bg-white text-white dark:text-black">
+                        Join as Student
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              </TitledCard>
+
 
               {/* Admin Card */}
-              <Card className="hover:shadow-xl transition-all duration-300 border-0 shadow-lg bg-white dark:bg-gray-800">
-                <CardHeader className="text-center pb-4">
-                  <div className="w-16 h-16 bg-black dark:bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 transition-colors duration-300">
-                    <Search className="w-8 h-8 text-white dark:text-black transition-colors duration-300" />
-                  </div>
-                  <CardTitle className="text-2xl text-gray-900 dark:text-white transition-colors duration-300">For Recruiters</CardTitle>
-                  <CardDescription className="text-gray-600 dark:text-gray-300 transition-colors duration-300">
-                    Find the perfect candidates with AI-powered search
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="text-center">
-                  <ul className="space-y-3 mb-6 text-left max-w-xs mx-auto">
-                    <li className="flex items-center text-gray-700 dark:text-gray-300 transition-colors duration-300">
-                      <div className="w-2 h-2 bg-black dark:bg-white rounded-full mr-3 transition-colors duration-300"></div>
-                      Smart candidate search
-                    </li>
-                    <li className="flex items-center text-gray-700 dark:text-gray-300 transition-colors duration-300">
-                      <div className="w-2 h-2 bg-black dark:bg-white rounded-full mr-3 transition-colors duration-300"></div>
-                      AI-powered matching
-                    </li>
-                    <li className="flex items-center text-gray-700 dark:text-gray-300 transition-colors duration-300">
-                      <div className="w-2 h-2 bg-black dark:bg-white rounded-full mr-3 transition-colors duration-300"></div>
-                      Access to top talent
-                    </li>
-                  </ul>
-                  <Link to="/new-register">
-                    <Button size="lg" className="w-full bg-black dark:bg-white hover:bg-gray-800 dark:hover:bg-gray-200 text-white dark:text-black transition-colors duration-300">
-                      Join as Recruiter
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
+              <TitledCard containerHeight="100%" containerWidth="100%">
+                <Card className="h-full w-full border-0 shadow-lg bg-white dark:bg-gray-800">
+                  <CardHeader className="text-center pb-4">
+                    <CardTitle className="text-2xl text-gray-900 dark:text-white">For Recruiters</CardTitle>
+                    <CardDescription className="text-gray-600 dark:text-gray-300">
+                      Find the perfect cadidates with AI-powered Search
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="text-center">
+                    <ul className="space-y-3 mb-6 text-left max-w-xs mx-auto">
+                      <li className="text-gray-700 dark:text-gray-300">Smart Candidate Search</li>
+                      <li className="text-gray-700 dark:text-gray-300">Ai-powered Matching</li>
+                      <li className="text-gray-700 dark:text-gray-300">Access to Top Talent</li>
+                    </ul>
+                    <Link to="/new-register">
+                      <Button size="lg" className="w-full bg-black dark:bg-white text-white dark:text-black">
+                        Join as Recruiter
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              </TitledCard>
+
             </div>
           </div>
         </section>

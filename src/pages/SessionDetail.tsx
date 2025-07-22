@@ -179,54 +179,78 @@ export default function SessionDetail() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-2">
-                <Users className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-medium">Total Candidates</p>
-                  <p className="text-2xl font-bold">{candidates?.length || 0}</p>
-                </div>
+        <Card className="glass-panel hover-lift border-0 shadow-glass overflow-hidden group relative fade-in-up">
+          <CardContent className="p-8 relative flex flex-col justify-between h-full">
+            <div className="absolute inset-0 gradient-primary opacity-10 group-hover:opacity-20 transition-opacity duration-300" />
+            <div className="relative z-10 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-2">Total Candidates</p>
+                <p className="text-4xl font-bold text-foreground group-hover:text-primary transition-colors duration-300">
+                  {candidates?.length || 0}
+                </p>
+                <p className="text-sm text-muted-foreground">Registered in this session</p>
               </div>
-            </CardContent>
-          </Card>
+              <div className="gradient-primary p-4 rounded-2xl shadow-glow group-hover:scale-110 transition-transform duration-300">
+                <Users className="h-8 w-8 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-2">
-                <Target className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-medium">Target Hires</p>
-                  <p className="text-2xl font-bold">{session.target_hires}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-2">
-                <Users className="h-5 w-5 text-green-600" />
-                <div>
-                  <p className="text-sm font-medium">Hired</p>
-                  <p className="text-2xl font-bold text-green-600">{statusCounts.hired}</p>
-                </div>
+        <Card className="glass-panel hover-lift border-0 shadow-glass overflow-hidden group relative fade-in-up">
+          <CardContent className="p-8 relative flex flex-col justify-between h-full">
+            <div className="absolute inset-0 gradient-primary opacity-10 group-hover:opacity-20 transition-opacity duration-300" />
+            <div className="relative z-10 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-2">Target Hires</p>
+                <p className="text-4xl font-bold text-foreground group-hover:text-primary transition-colors duration-300">
+                  {session.target_hires}
+                </p>
+                <p className="text-sm text-muted-foreground">Target hires for this session</p>
               </div>
-            </CardContent>
-          </Card>
+              <div className="gradient-primary p-4 rounded-2xl shadow-glow group-hover:scale-110 transition-transform duration-300">
+                <Target className="h-8 w-8 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-2">
-                <Calendar className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-medium">Created</p>
-                  <p className="text-sm">{new Date(session.created_at).toLocaleDateString()}</p>
-                </div>
+
+        <Card className="glass-panel hover-lift border-0 shadow-glass overflow-hidden group relative fade-in-up">
+          <CardContent className="p-8 relative flex flex-col justify-between h-full">
+            <div className="absolute inset-0 gradient-primary opacity-10 group-hover:opacity-20 transition-opacity duration-300" />
+            <div className="relative z-10 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-2">Hired</p>
+                <p className="text-4xl font-bold text-foreground group-hover:text-primary transition-colors duration-300">
+                  {statusCounts.hired}
+                </p>
+                <p className="text-sm text-muted-foreground">Hired candidates for this session</p>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+              <div className="gradient-primary p-4 rounded-2xl shadow-glow group-hover:scale-110 transition-transform duration-300">
+                <Users className="h-8 w-8 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+
+        <Card className="glass-panel hover-lift border-0 shadow-glass overflow-hidden group relative fade-in-up">
+          <CardContent className="p-8 relative flex flex-col justify-between h-full">
+            <div className="absolute inset-0 gradient-primary opacity-10 group-hover:opacity-20 transition-opacity duration-300" />
+            <div className="relative z-10 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-2">Created</p>
+                <p className="text-sm text-muted-foreground">{new Date(session.created_at).toLocaleDateString()}</p>
+              </div>
+              <div className="gradient-primary p-4 rounded-2xl shadow-glow group-hover:scale-110 transition-transform duration-300">
+                <Calendar className="h-8 w-8 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
         <Tabs defaultValue="candidates" className="w-full">
           <TabsList>
@@ -237,11 +261,11 @@ export default function SessionDetail() {
           <TabsContent value="candidates" className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex gap-2">
-                <Badge variant="outline">Applied: {statusCounts.applied}</Badge>
-                <Badge variant="secondary">Shortlisted: {statusCounts.shortlisted}</Badge>
-                <Badge variant="outline">Waitlisted: {statusCounts.waitlisted}</Badge>
-                <Badge variant="default">Hired: {statusCounts.hired}</Badge>
-                <Badge variant="destructive">Rejected: {statusCounts.rejected}</Badge>
+                <div className="p-2">Applied: {statusCounts.applied}</div>
+                <div className="p-2">Shortlisted: {statusCounts.shortlisted}</div>
+                <div className="p-2">Waitlisted: {statusCounts.waitlisted}</div>
+                <div className="p-2">Hired: {statusCounts.hired}</div>
+                <div className="p-2">Rejected: {statusCounts.rejected}</div>
               </div>
               <Select value={selectedStatus} onValueChange={setSelectedStatus}>
                 <SelectTrigger className="w-48">

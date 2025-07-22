@@ -170,7 +170,7 @@ const AdminDashboard = () => {
                   <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
                     <Button 
                       onClick={() => navigate('/create-session')} 
-                      className="gradient-primary text-white border-0 shadow-glow hover:scale-105 transition-all duration-300 px-10 py-4 text-lg font-semibold"
+                      className="gradient-primary text-white border-0 shadow-glow hover:scale-105 transition-all duration-300 px-5 py-4 text-lg font-semibold"
                       size="lg"
                     >
                       <Plus className="w-6 h-6 mr-3" />
@@ -179,7 +179,7 @@ const AdminDashboard = () => {
                     <Button 
                       variant="outline" 
                       onClick={() => setSelectedTab('search')}
-                      className="glass-button border-primary/30 text-primary hover:bg-primary/10 px-10 py-4 text-lg font-semibold"
+                      className="glass-button border-primary/30 text-primary hover:scale-105 transition-all duration-300 px-5 py-4 text-lg font-semibold"
                       size="lg"
                     >
                       <Search className="w-6 h-6 mr-3" />
