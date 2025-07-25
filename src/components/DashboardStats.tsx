@@ -57,9 +57,9 @@ export const DashboardStats = ({ sessions }: DashboardStatsProps) => {
                   <p className="text-4xl font-bold text-foreground group-hover:text-primary transition-colors duration-300">
                     {stat.value}
                   </p>
-                  <span className="text-sm font-medium text-accent pulse-glow">
-                    {stat.change}
-                  </span>
+                   <span className="text-sm font-medium text-accent pulse-glow">
+                     +5.2%
+                   </span>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {stat.description}

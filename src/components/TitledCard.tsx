@@ -58,7 +58,7 @@ export default function TitledCard({
 
   return (
     <motion.div
-      ref={ref}
+      ref={ref as any}
       className="rounded-xl shadow-md"
       style={{
         height: containerHeight,
