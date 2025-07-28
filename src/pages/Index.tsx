@@ -4,6 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Users, Search, Upload, BookOpen } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import TitledCard from '../components/TitledCard';
+import DarkVeil from '../components/DarkVeil';
+
 
 const Index = () => {
   return (

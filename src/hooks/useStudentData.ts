@@ -8,6 +8,12 @@ interface StudentData {
   department?: string;
   gpa?: string;
   skills?: string[];
+  projects?: string[];
+  experience?: string[];
+  cgpa?: string;
+  tenth_mark?: string;
+  twelfth_mark?: string;
+  summary?: string;
   resume_url?: string;
   ats_score?: number;
   has_internship?: boolean;

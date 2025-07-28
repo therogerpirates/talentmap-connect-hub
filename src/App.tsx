@@ -12,6 +12,8 @@ import NewRegister from "./pages/NewRegister";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import StudentDashboard from "./pages/StudentDashboard";
+import ResumeScanner from "./pages/ResumeScanner";
+import StudentDetails from "./pages/StudentDetails";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 import ProfilePage from './pages/ProfilePage';
@@ -40,6 +42,22 @@ const App = () => (
                 element={
                   <ProtectedRoute role="student">
                     <StudentDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/resume-scanner" 
+                element={
+                  <ProtectedRoute role="student">
+                    <ResumeScanner />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/student-details" 
+                element={
+                  <ProtectedRoute role="student">
+                    <StudentDetails />
                   </ProtectedRoute>
                 } 
               />

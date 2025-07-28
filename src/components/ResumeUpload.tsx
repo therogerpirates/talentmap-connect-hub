@@ -265,7 +265,7 @@ const ResumeUpload = ({ onUploadSuccess, hasExistingResume = false }: ResumeUplo
           </p>
           <Button
             onClick={() => setShowUploadDialog(true)}
-            className="bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors duration-300"
+            className="gradient-primary text-white"
           >
             Upload Resume
           </Button>
