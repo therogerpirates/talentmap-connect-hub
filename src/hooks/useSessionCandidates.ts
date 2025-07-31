@@ -31,31 +31,58 @@ export const useSessionCandidates = (sessionId: string) => {
   return useQuery({
     queryKey: ['session-candidates', sessionId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First get the session candidates
+      const { data: candidates, error: candidatesError } = await supabase
         .from('session_candidates')
-        .select(`
-          *,
-          student:students(
-            id,
-            year,
-            department,
-            gpa,
-            skills,
-            profile:profiles(
-              full_name,
-              email,
-              college,
-              gender,
-              tenth_percentage,
-              twelfth_percentage
-            )
-          )
-        `)
+        .select('*')
         .eq('session_id', sessionId)
         .order('match_score', { ascending: false });
       
-      if (error) throw error;
-      return data as unknown as SessionCandidate[];
+      // Handle RLS policy errors gracefully
+      if (candidatesError) {
+        console.warn('Error fetching session candidates:', candidatesError);
+        // Return empty array for RLS errors instead of throwing
+        if (candidatesError.code === '42501' || candidatesError.message?.includes('policy')) {
+          return [];
+        }
+        throw candidatesError;
+      }
+      if (!candidates || candidates.length === 0) return [];
+      
+      // Get student IDs
+      const studentIds = candidates.map(c => c.student_id);
+      
+      // Fetch students data
+      const { data: students, error: studentsError } = await supabase
+        .from('students')
+        .select('id, year, department, gpa, skills')
+        .in('id', studentIds);
+      
+      if (studentsError) throw studentsError;
+      
+      // Fetch profiles data
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, college, gender, tenth_percentage, twelfth_percentage')
+        .in('id', studentIds);
+        
+      if (profilesError) throw profilesError;
+      
+      // Combine the data
+      const candidatesWithStudentData = candidates.map(candidate => {
+        const student = students?.find(s => s.id === candidate.student_id);
+        const profile = profiles?.find(p => p.id === candidate.student_id);
+        
+        return {
+          ...candidate,
+          student: student ? {
+            ...student,
+            profile: profile || null
+          } : null
+        };
+      });
+      
+      return candidatesWithStudentData as unknown as SessionCandidate[];
     },
     enabled: !!sessionId,
   });

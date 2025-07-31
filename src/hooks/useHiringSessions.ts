@@ -34,7 +34,15 @@ export const useHiringSessions = () => {
         .select('*')
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      // Handle RLS policy errors gracefully
+      if (error) {
+        console.warn('Error fetching hiring sessions:', error);
+        // Return empty array for RLS errors instead of throwing
+        if (error.code === '42501' || error.message?.includes('policy')) {
+          return [];
+        }
+        throw error;
+      }
       return data as HiringSession[];
     },
   });

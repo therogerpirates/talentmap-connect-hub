@@ -43,8 +43,9 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY") # It's safer to use environment va
 # Initialize Groq client with error handling
 try:
     if GROQ_API_KEY:
-        groq_client = Groq(api_key=GROQ_API_KEY)
-        print("Groq client initialized successfully")
+        # Temporarily disable Groq to avoid proxies error
+        groq_client = None
+        print("Groq client temporarily disabled due to proxies error")
     else:
         groq_client = None
         print("GROQ_API_KEY not found, Groq client not initialized")
@@ -1025,10 +1026,28 @@ async def create_test_session():
     Create a test hiring session for debugging purposes
     """
     try:
+        # First, check if we have any profiles to use as recruiter_id
+        profiles_response = supabase.table('profiles').select('id').limit(1).execute()
+        
+        if not profiles_response.data:
+            # Create a test profile first
+            import uuid
+            test_recruiter_uuid = str(uuid.uuid4())
+            profile_data = {
+                'id': test_recruiter_uuid,
+                'full_name': 'Test Recruiter',
+                'email': 'test@example.com',
+                'role': 'recruiter'
+            }
+            supabase.table('profiles').insert(profile_data).execute()
+            recruiter_id = test_recruiter_uuid
+        else:
+            recruiter_id = profiles_response.data[0]['id']
+        
         test_session_data = {
             'title': 'Test Machine Learning Engineer Position',
             'role': 'ML Engineer',
-            'recruiter_id': 'test-recruiter-123',
+            'recruiter_id': recruiter_id,
             'description': 'Test position for machine learning engineer with Python experience',
             'target_hires': 1,
             'current_hires': 0,
@@ -1302,4 +1321,849 @@ async def extract_job_info(request: Request):
         return JSONResponse({
             "status": "error", 
             "message": f"Failed to extract job information: {str(e)}"
+        }, status_code=500)
+
+
+def calculate_student_job_match_score(student_data: dict, job_requirements: dict, job_eligibility: dict) -> float:
+    """
+    Calculate match score between a student and job requirements.
+    Returns a score from 0-100 based on various criteria.
+    """
+    try:
+        total_score = 0.0
+        
+        # 1. Skills Match (40% weight)
+        skills_score = 0.0
+        required_skills = job_requirements.get('required_skills', [])
+        student_skills = student_data.get('skills', [])
+        
+        if required_skills and student_skills:
+            # Convert to lowercase for case-insensitive matching
+            required_skills_lower = [skill.lower().strip() for skill in required_skills]
+            student_skills_lower = [skill.lower().strip() for skill in student_skills]
+            
+            matched_skills = 0
+            for req_skill in required_skills_lower:
+                # Check for exact match or partial match
+                for student_skill in student_skills_lower:
+                    if req_skill in student_skill or student_skill in req_skill:
+                        matched_skills += 1
+                        break
+            
+            skills_score = (matched_skills / len(required_skills)) * 100 if required_skills else 0
+        
+        total_score += skills_score * 0.4
+        
+        # 2. Education Match (25% weight)
+        education_score = 0.0
+        required_education = job_eligibility.get('education', [])
+        student_education = student_data.get('education', [])
+        
+        if required_education and student_education:
+            # Simple matching - if any education requirement matches student's education
+            education_matched = False
+            for req_edu in required_education:
+                req_edu_lower = req_edu.lower()
+                for student_edu in student_education:
+                    if isinstance(student_edu, dict):
+                        student_edu_str = str(student_edu.get('degree', '') + ' ' + student_edu.get('field', '')).lower()
+                    else:
+                        student_edu_str = str(student_edu).lower()
+                    
+                    if req_edu_lower in student_edu_str or any(word in student_edu_str for word in req_edu_lower.split()):
+                        education_matched = True
+                        break
+                if education_matched:
+                    break
+            
+            education_score = 100 if education_matched else 50  # 50 for any degree, 100 for exact match
+        elif not required_education:  # No specific education required
+            education_score = 100
+        else:
+            education_score = 0  # No education data for student
+        
+        total_score += education_score * 0.25
+        
+        # 3. Experience Match (20% weight) 
+        experience_score = 0.0
+        required_experience = job_eligibility.get('experience_years', 0)
+        student_experience = student_data.get('experience', [])
+        
+        if required_experience > 0:
+            # Calculate student's total experience years
+            student_exp_years = 0
+            if student_experience:
+                # Simple heuristic: count number of experiences and estimate years
+                student_exp_years = len(student_experience) * 0.5  # Assume 6 months per experience on average
+                
+                # Try to extract years from experience descriptions
+                for exp in student_experience:
+                    exp_str = str(exp).lower()
+                    # Look for year patterns
+                    year_matches = re.findall(r'(\d+)\s*(?:year|yr)', exp_str)
+                    if year_matches:
+                        student_exp_years += sum(int(y) for y in year_matches)
+            
+            if student_exp_years >= required_experience:
+                experience_score = 100
+            elif student_exp_years >= required_experience * 0.5:  # At least 50% of required experience
+                experience_score = 80
+            else:
+                experience_score = 40  # Some experience but not enough
+        else:
+            experience_score = 100  # No specific experience required
+        
+        total_score += experience_score * 0.2
+        
+        # 4. Academic Performance (10% weight)
+        academic_score = 0.0
+        required_cgpa = job_eligibility.get('cgpa_minimum', 0)
+        student_gpa = student_data.get('gpa')
+        
+        if required_cgpa > 0 and student_gpa:
+            try:
+                student_gpa_float = float(student_gpa)
+                if student_gpa_float >= required_cgpa:
+                    academic_score = 100
+                elif student_gpa_float >= required_cgpa * 0.9:  # Within 90% of required
+                    academic_score = 80
+                else:
+                    academic_score = 50
+            except (ValueError, TypeError):
+                academic_score = 50  # Default if GPA parsing fails
+        elif not required_cgpa:  # No minimum GPA required
+            academic_score = 100
+        else:
+            academic_score = 50  # No GPA data
+        
+        total_score += academic_score * 0.1
+        
+        # 5. Year Eligibility (5% weight)
+        year_score = 0.0
+        eligible_years = job_eligibility.get('eligible_years', [])
+        student_year = student_data.get('year')
+        
+        if eligible_years and student_year:
+            try:
+                student_year_int = int(student_year)
+                if student_year_int in eligible_years:
+                    year_score = 100
+                else:
+                    year_score = 0
+            except (ValueError, TypeError):
+                year_score = 50
+        elif not eligible_years:  # No year restriction
+            year_score = 100
+        else:
+            year_score = 50
+        
+        total_score += year_score * 0.05
+        
+        # Cap the score between 0 and 100
+        final_score = max(0, min(100, total_score))
+        
+        print(f"Match score breakdown - Skills: {skills_score:.1f}, Education: {education_score:.1f}, Experience: {experience_score:.1f}, Academic: {academic_score:.1f}, Year: {year_score:.1f}, Final: {final_score:.1f}")
+        
+        return final_score
+        
+    except Exception as e:
+        print(f"Error calculating match score: {e}")
+        return 0.0
+
+
+@app.post("/find-matching-students/{session_id}")
+async def find_matching_students(session_id: str, min_score: float = 60.0):
+    """
+    Find and rank students based on their match with job requirements.
+    Automatically populates session_candidates table with matching students.
+    """
+    try:
+        print(f"Finding matching students for session: {session_id}")
+        
+        # 1. Get the hiring session details
+        session_response = supabase.table('hiring_sessions').select('*').eq('id', session_id).execute()
+        
+        if not session_response.data:
+            raise HTTPException(status_code=404, detail="Hiring session not found")
+        
+        session = session_response.data[0]
+        requirements = session.get('requirements', {})
+        eligibility_criteria = session.get('eligibility_criteria', {})
+        
+        print(f"Session requirements: {requirements}")
+        print(f"Session eligibility: {eligibility_criteria}")
+        
+        # 2. Get all students with their data
+        students_response = supabase.table('students').select('*').execute()
+        
+        if not students_response.data:
+            return JSONResponse({
+                "status": "success",
+                "message": "No students found in database",
+                "matches": []
+            })
+        
+        students = students_response.data
+        print(f"Found {len(students)} total students")
+        
+        # 3. Calculate match scores for all students
+        matches = []
+        for student in students:
+            try:
+                match_score = calculate_student_job_match_score(student, requirements, eligibility_criteria)
+                
+                if match_score >= min_score:
+                    # Get student profile info
+                    profile_response = supabase.table('profiles').select('full_name, email').eq('id', student['id']).execute()
+                    profile = profile_response.data[0] if profile_response.data else {}
+                    
+                    match_data = {
+                        'student_id': student['id'],
+                        'match_score': round(match_score, 2),
+                        'student_name': profile.get('full_name', 'Unknown'),
+                        'student_email': profile.get('email', 'Unknown'),
+                        'skills': student.get('skills', []),
+                        'year': student.get('year'),
+                        'department': student.get('department'),
+                        'gpa': student.get('gpa'),
+                        'has_resume': bool(student.get('resume_url'))
+                    }
+                    matches.append(match_data)
+                    
+            except Exception as student_error:
+                print(f"Error processing student {student.get('id', 'unknown')}: {student_error}")
+                continue
+        
+        # 4. Sort matches by score (highest first)
+        matches.sort(key=lambda x: x['match_score'], reverse=True)
+        
+        print(f"Found {len(matches)} students above {min_score}% match threshold")
+        
+        # 5. Clear existing candidates for this session and add new matches
+        try:
+            # Delete existing candidates
+            supabase.table('session_candidates').delete().eq('session_id', session_id).execute()
+            
+            # Insert new matching candidates
+            candidates_to_insert = []
+            for match in matches:
+                # Determine initial status based on match score
+                if match['match_score'] >= 90:
+                    initial_status = 'shortlisted'
+                elif match['match_score'] >= 80:
+                    initial_status = 'shortlisted'
+                elif match['match_score'] >= 70:
+                    initial_status = 'shortlisted'
+                else:
+                    initial_status = 'shortlisted'  # All matching students start as shortlisted
+                
+                candidates_to_insert.append({
+                    'session_id': session_id,
+                    'student_id': match['student_id'],
+                    'match_score': match['match_score'],
+                    'status': initial_status,
+                    'recruiter_notes': f"Auto-matched with {match['match_score']}% compatibility"
+                })
+            
+            if candidates_to_insert:
+                supabase.table('session_candidates').insert(candidates_to_insert).execute()
+                print(f"Inserted {len(candidates_to_insert)} candidates into session")
+        
+        except Exception as db_error:
+            print(f"Database error while updating candidates: {db_error}")
+            # Continue even if database update fails
+        
+        return JSONResponse({
+            "status": "success",
+            "message": f"Found {len(matches)} matching students",
+            "session_id": session_id,
+            "total_matches": len(matches),
+            "min_score_threshold": min_score,
+            "matches": matches[:50]  # Return top 50 matches
+        })
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error finding matching students: {e}")
+        traceback.print_exc()
+        return JSONResponse({
+            "status": "error",
+            "message": f"Failed to find matching students: {str(e)}"
+        }, status_code=500)
+
+
+@app.post("/refresh-session-matches/{session_id}")
+async def refresh_session_matches(session_id: str, min_score: float = 60.0):
+    """
+    Refresh the matching students for a hiring session.
+    This is useful when job requirements are updated or new students are added.
+    """
+    try:
+        # Simply call the find_matching_students function
+        return await find_matching_students(session_id, min_score)
+        
+    except Exception as e:
+        print(f"Error refreshing session matches: {e}")
+        return JSONResponse({
+            "status": "error",
+            "message": f"Failed to refresh matches: {str(e)}"
+        }, status_code=500)
+
+
+@app.get("/detailed-match-analysis/{session_id}/{student_id}")
+async def get_detailed_match_analysis(session_id: str, student_id: str):
+    """
+    Get detailed match analysis between a specific student and job requirements.
+    Returns breakdown of skill matching, education compatibility, experience alignment, etc.
+    """
+    try:
+        # 1. Get the hiring session details
+        session_response = supabase.table('hiring_sessions').select('*').eq('id', session_id).execute()
+        if not session_response.data:
+            raise HTTPException(status_code=404, detail="Hiring session not found")
+        
+        session = session_response.data[0]
+        requirements = session.get('requirements', {})
+        eligibility_criteria = session.get('eligibility_criteria', {})
+        
+        # 2. Get student details
+        student_response = supabase.table('students').select('*').eq('id', student_id).execute()
+        if not student_response.data:
+            raise HTTPException(status_code=404, detail="Student not found")
+        
+        student = student_response.data[0]
+        
+        # 3. Get student profile
+        profile_response = supabase.table('profiles').select('*').eq('id', student_id).execute()
+        profile = profile_response.data[0] if profile_response.data else {}
+        
+        # 4. Calculate detailed match analysis
+        analysis = calculate_detailed_match_analysis(student, requirements, eligibility_criteria)
+        
+        # 5. Add student and job info to response
+        analysis['student_info'] = {
+            'name': profile.get('full_name', 'Unknown'),
+            'email': profile.get('email', ''),
+            'year': student.get('year'),
+            'department': student.get('department'),
+            'gpa': student.get('gpa'),
+            'skills': student.get('skills', []),
+            'experience': student.get('experience', []),
+            'projects': student.get('projects', []),
+            'has_internship': student.get('has_internship', False),
+            'ats_score': student.get('ats_score', 0)
+        }
+        
+        analysis['job_info'] = {
+            'title': session.get('title'),
+            'role': session.get('role'),
+            'required_skills': requirements.get('required_skills', []),
+            'education_requirements': eligibility_criteria.get('education', []),
+            'experience_years': eligibility_criteria.get('experience_years', 0),
+            'cgpa_minimum': eligibility_criteria.get('cgpa_minimum', 0),
+            'eligible_years': eligibility_criteria.get('eligible_years', [])
+        }
+        
+        return JSONResponse({
+            "status": "success",
+            "analysis": analysis
+        })
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error in detailed match analysis: {e}")
+        return JSONResponse({
+            "status": "error",
+            "message": f"Failed to get detailed analysis: {str(e)}"
+        }, status_code=500)
+
+
+def calculate_detailed_match_analysis(student_data: dict, job_requirements: dict, job_eligibility: dict) -> dict:
+    """
+    Calculate detailed match analysis with breakdown of each component.
+    """
+    analysis = {
+        'overall_score': 0.0,
+        'skills_analysis': {},
+        'education_analysis': {},
+        'experience_analysis': {},
+        'academic_analysis': {},
+        'year_eligibility_analysis': {},
+        'recommendations': []
+    }
+    
+    try:
+        # 1. Skills Analysis (40% weight)
+        required_skills = job_requirements.get('required_skills', [])
+        student_skills = student_data.get('skills', [])
+        
+        skills_analysis = {
+            'weight': 40,
+            'score': 0.0,
+            'matched_skills': [],
+            'missing_skills': [],
+            'additional_skills': []
+        }
+        
+        if required_skills and student_skills:
+            required_skills_lower = [skill.lower().strip() for skill in required_skills]
+            student_skills_lower = [skill.lower().strip() for skill in student_skills]
+            
+            matched_count = 0
+            for req_skill in required_skills:
+                req_skill_lower = req_skill.lower().strip()
+                matched = False
+                for student_skill in student_skills:
+                    student_skill_lower = student_skill.lower().strip()
+                    if req_skill_lower in student_skill_lower or student_skill_lower in req_skill_lower:
+                        skills_analysis['matched_skills'].append({
+                            'required': req_skill,
+                            'student_has': student_skill
+                        })
+                        matched_count += 1
+                        matched = True
+                        break
+                
+                if not matched:
+                    skills_analysis['missing_skills'].append(req_skill)
+            
+            # Find additional skills student has
+            for student_skill in student_skills:
+                student_skill_lower = student_skill.lower().strip()
+                is_additional = True
+                for req_skill_lower in required_skills_lower:
+                    if req_skill_lower in student_skill_lower or student_skill_lower in req_skill_lower:
+                        is_additional = False
+                        break
+                if is_additional:
+                    skills_analysis['additional_skills'].append(student_skill)
+            
+            skills_analysis['score'] = (matched_count / len(required_skills)) * 100
+        elif not required_skills:
+            skills_analysis['score'] = 100
+            
+        analysis['skills_analysis'] = skills_analysis
+        
+        # 2. Education Analysis (25% weight)
+        education_analysis = {
+            'weight': 25,
+            'score': 0.0,
+            'requirements_met': [],
+            'requirements_not_met': [],
+            'student_education': student_data.get('education', [])
+        }
+        
+        required_education = job_eligibility.get('education', [])
+        student_education = student_data.get('education', [])
+        
+        if required_education and student_education:
+            education_matched = False
+            for req_edu in required_education:
+                req_edu_lower = req_edu.lower()
+                matched = False
+                for student_edu in student_education:
+                    if isinstance(student_edu, dict):
+                        student_edu_str = str(student_edu.get('degree', '') + ' ' + student_edu.get('field', '')).lower()
+                    else:
+                        student_edu_str = str(student_edu).lower()
+                    
+                    if req_edu_lower in student_edu_str or any(word in student_edu_str for word in req_edu_lower.split()):
+                        education_analysis['requirements_met'].append({
+                            'required': req_edu,
+                            'student_has': student_edu_str
+                        })
+                        education_matched = True
+                        matched = True
+                        break
+                
+                if not matched:
+                    education_analysis['requirements_not_met'].append(req_edu)
+            
+            education_analysis['score'] = 100 if education_matched else 50
+        elif not required_education:
+            education_analysis['score'] = 100
+            
+        analysis['education_analysis'] = education_analysis
+        
+        # 3. Experience Analysis (20% weight)
+        experience_analysis = {
+            'weight': 20,
+            'score': 0.0,
+            'required_years': job_eligibility.get('experience_years', 0),
+            'student_experience_years': 0,
+            'student_experiences': student_data.get('experience', []),
+            'has_internship': student_data.get('has_internship', False)
+        }
+        
+        required_experience = job_eligibility.get('experience_years', 0)
+        student_experience = student_data.get('experience', [])
+        
+        if required_experience > 0:
+            student_exp_years = 0
+            if student_experience:
+                student_exp_years = len(student_experience) * 0.5
+                
+                for exp in student_experience:
+                    exp_str = str(exp).lower()
+                    year_matches = re.findall(r'(\d+)\s*(?:year|yr)', exp_str)
+                    if year_matches:
+                        student_exp_years += sum(int(y) for y in year_matches)
+            
+            experience_analysis['student_experience_years'] = student_exp_years
+            
+            if student_exp_years >= required_experience:
+                experience_analysis['score'] = 100
+            elif student_exp_years >= required_experience * 0.5:
+                experience_analysis['score'] = 80
+            else:
+                experience_analysis['score'] = 40
+        else:
+            experience_analysis['score'] = 100
+            
+        analysis['experience_analysis'] = experience_analysis
+        
+        # 4. Academic Analysis (10% weight)
+        academic_analysis = {
+            'weight': 10,
+            'score': 0.0,
+            'required_cgpa': job_eligibility.get('cgpa_minimum', 0),
+            'student_gpa': student_data.get('gpa'),
+            'meets_requirement': False
+        }
+        
+        required_cgpa = job_eligibility.get('cgpa_minimum', 0)
+        student_gpa = student_data.get('gpa')
+        
+        if required_cgpa > 0 and student_gpa:
+            try:
+                student_gpa_float = float(student_gpa)
+                if student_gpa_float >= required_cgpa:
+                    academic_analysis['score'] = 100
+                    academic_analysis['meets_requirement'] = True
+                elif student_gpa_float >= required_cgpa * 0.9:
+                    academic_analysis['score'] = 80
+                else:
+                    academic_analysis['score'] = 50
+            except (ValueError, TypeError):
+                academic_analysis['score'] = 50
+        elif not required_cgpa:
+            academic_analysis['score'] = 100
+        else:
+            academic_analysis['score'] = 50
+            
+        analysis['academic_analysis'] = academic_analysis
+        
+        # 5. Year Eligibility Analysis (5% weight)
+        year_analysis = {
+            'weight': 5,
+            'score': 0.0,
+            'eligible_years': job_eligibility.get('eligible_years', []),
+            'student_year': student_data.get('year'),
+            'is_eligible': False
+        }
+        
+        eligible_years = job_eligibility.get('eligible_years', [])
+        student_year = student_data.get('year')
+        
+        if eligible_years and student_year:
+            try:
+                student_year_int = int(student_year)
+                if student_year_int in eligible_years:
+                    year_analysis['score'] = 100
+                    year_analysis['is_eligible'] = True
+                else:
+                    year_analysis['score'] = 0
+            except (ValueError, TypeError):
+                year_analysis['score'] = 50
+        elif not eligible_years:
+            year_analysis['score'] = 100
+            year_analysis['is_eligible'] = True
+        else:
+            year_analysis['score'] = 50
+            
+        analysis['year_eligibility_analysis'] = year_analysis
+        
+        # Calculate overall score
+        overall_score = (
+            skills_analysis['score'] * 0.4 +
+            education_analysis['score'] * 0.25 +
+            experience_analysis['score'] * 0.2 +
+            academic_analysis['score'] * 0.1 +
+            year_analysis['score'] * 0.05
+        )
+        
+        analysis['overall_score'] = round(max(0, min(100, overall_score)), 2)
+        
+        # Generate recommendations
+        recommendations = []
+        
+        if skills_analysis['missing_skills']:
+            recommendations.append(f"Consider developing skills in: {', '.join(skills_analysis['missing_skills'][:3])}")
+        
+        if not education_analysis['requirements_met'] and education_analysis['requirements_not_met']:
+            recommendations.append(f"Educational background may not fully align with requirements")
+        
+        if experience_analysis['required_years'] > experience_analysis['student_experience_years']:
+            recommendations.append(f"Gain more experience (has {experience_analysis['student_experience_years']} years, needs {experience_analysis['required_years']})")
+        
+        if not academic_analysis['meets_requirement'] and academic_analysis['required_cgpa'] > 0:
+            recommendations.append(f"CGPA requirement not met (has {student_gpa}, needs {academic_analysis['required_cgpa']})")
+        
+        if not year_analysis['is_eligible'] and year_analysis['eligible_years']:
+            recommendations.append(f"Not in eligible academic year (in year {student_year}, eligible: {year_analysis['eligible_years']})")
+        
+        if len(recommendations) == 0:
+            recommendations.append("Strong candidate with good alignment to job requirements!")
+        
+        analysis['recommendations'] = recommendations
+        
+        return analysis
+        
+    except Exception as e:
+        print(f"Error in detailed match analysis: {e}")
+        return analysis
+
+
+@app.post("/bulk-update-candidate-status/")
+async def bulk_update_candidate_status(request: Request):
+    """
+    Update status for multiple candidates at once.
+    Useful for batch operations like shortlisting multiple candidates.
+    """
+    try:
+        data = await request.json()
+        updates = data.get("updates", [])  # List of {candidate_id, status, notes}
+        
+        if not updates:
+            return JSONResponse({
+                "status": "error",
+                "message": "No updates provided"
+            }, status_code=400)
+        
+        updated_candidates = []
+        failed_updates = []
+        
+        for update in updates:
+            candidate_id = update.get("candidate_id")
+            new_status = update.get("status")
+            notes = update.get("notes", "")
+            
+            if not candidate_id or not new_status:
+                failed_updates.append({"candidate_id": candidate_id, "error": "Missing candidate_id or status"})
+                continue
+            
+            try:
+                # Update candidate status
+                response = supabase.table('session_candidates').update({
+                    'status': new_status,
+                    'recruiter_notes': notes,
+                    'updated_at': 'now()'
+                }).eq('id', candidate_id).execute()
+                
+                if response.data:
+                    updated_candidates.append(candidate_id)
+                else:
+                    failed_updates.append({"candidate_id": candidate_id, "error": "Update failed"})
+                    
+            except Exception as e:
+                failed_updates.append({"candidate_id": candidate_id, "error": str(e)})
+        
+        return JSONResponse({
+            "status": "success",
+            "updated_count": len(updated_candidates),
+            "failed_count": len(failed_updates),
+            "updated_candidates": updated_candidates,
+            "failed_updates": failed_updates
+        })
+        
+    except Exception as e:
+        print(f"Error in bulk status update: {e}")
+        return JSONResponse({
+            "status": "error",
+            "message": f"Failed to update candidate statuses: {str(e)}"
+        }, status_code=500)
+
+
+@app.get("/session-analytics/{session_id}")
+async def get_session_analytics(session_id: str):
+    """
+    Get analytics for a hiring session including candidate distribution,
+    match score analysis, and recruitment pipeline metrics.
+    """
+    try:
+        # 1. Get session details
+        session_response = supabase.table('hiring_sessions').select('*').eq('id', session_id).execute()
+        if not session_response.data:
+            raise HTTPException(status_code=404, detail="Hiring session not found")
+        
+        session = session_response.data[0]
+        
+        # 2. Get all candidates for this session
+        candidates_response = supabase.table('session_candidates').select(
+            "*,student:students(id,skills,year,department,gpa,has_internship,ats_score)"
+        ).eq('session_id', session_id).execute()
+        
+        candidates = candidates_response.data if candidates_response.data else []
+        
+        # 3. Calculate analytics
+        analytics = {
+            'session_info': {
+                'title': session.get('title'),
+                'role': session.get('role'),
+                'target_hires': session.get('target_hires', 0),
+                'current_hires': session.get('current_hires', 0)
+            },
+            'candidate_stats': {
+                'total_candidates': len(candidates),
+                'status_distribution': {},
+                'match_score_distribution': {
+                    'excellent': 0,  # 90-100%
+                    'good': 0,       # 80-89%
+                    'fair': 0,       # 70-79%
+                    'poor': 0        # <70%
+                },
+                'year_distribution': {},
+                'department_distribution': {},
+                'skills_analysis': {
+                    'most_common_skills': {},
+                    'average_skill_count': 0
+                },
+                'academic_stats': {
+                    'average_gpa': 0,
+                    'average_ats_score': 0,
+                    'internship_percentage': 0
+                }
+            },
+            'pipeline_metrics': {
+                'conversion_rates': {},
+                'top_performers': []
+            }
+        }
+        
+        # Status distribution
+        status_counts = {}
+        match_scores = []
+        years = []
+        departments = []
+        all_skills = []
+        gpas = []
+        ats_scores = []
+        internship_count = 0
+        
+        for candidate in candidates:
+            status = candidate.get('status', 'unknown')
+            status_counts[status] = status_counts.get(status, 0) + 1
+            
+            match_score = candidate.get('match_score', 0)
+            match_scores.append(match_score)
+            
+            # Categorize match scores
+            if match_score >= 90:
+                analytics['candidate_stats']['match_score_distribution']['excellent'] += 1
+            elif match_score >= 80:
+                analytics['candidate_stats']['match_score_distribution']['good'] += 1
+            elif match_score >= 70:
+                analytics['candidate_stats']['match_score_distribution']['fair'] += 1
+            else:
+                analytics['candidate_stats']['match_score_distribution']['poor'] += 1
+            
+            # Student data analysis
+            student = candidate.get('student', {})
+            if student:
+                year = student.get('year')
+                if year:
+                    years.append(year)
+                
+                dept = student.get('department')
+                if dept:
+                    departments.append(dept)
+                
+                skills = student.get('skills', [])
+                if skills:
+                    all_skills.extend(skills)
+                
+                gpa = student.get('gpa')
+                if gpa:
+                    try:
+                        gpas.append(float(gpa))
+                    except (ValueError, TypeError):
+                        pass
+                
+                ats_score = student.get('ats_score')
+                if ats_score:
+                    ats_scores.append(ats_score)
+                
+                if student.get('has_internship'):
+                    internship_count += 1
+        
+        analytics['candidate_stats']['status_distribution'] = status_counts
+        
+        # Year distribution
+        year_counts = {}
+        for year in years:
+            year_counts[year] = year_counts.get(year, 0) + 1
+        analytics['candidate_stats']['year_distribution'] = year_counts
+        
+        # Department distribution
+        dept_counts = {}
+        for dept in departments:
+            dept_counts[dept] = dept_counts.get(dept, 0) + 1
+        analytics['candidate_stats']['department_distribution'] = dept_counts
+        
+        # Skills analysis
+        skill_counts = {}
+        for skill in all_skills:
+            skill_counts[skill] = skill_counts.get(skill, 0) + 1
+        
+        # Top 10 most common skills
+        top_skills = sorted(skill_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+        analytics['candidate_stats']['skills_analysis']['most_common_skills'] = dict(top_skills)
+        analytics['candidate_stats']['skills_analysis']['average_skill_count'] = round(len(all_skills) / max(1, len(candidates)), 1)
+        
+        # Academic stats
+        if gpas:
+            analytics['candidate_stats']['academic_stats']['average_gpa'] = round(sum(gpas) / len(gpas), 2)
+        if ats_scores:
+            analytics['candidate_stats']['academic_stats']['average_ats_score'] = round(sum(ats_scores) / len(ats_scores), 1)
+        if candidates:
+            analytics['candidate_stats']['academic_stats']['internship_percentage'] = round((internship_count / len(candidates)) * 100, 1)
+        
+        # Pipeline metrics
+        total = len(candidates)
+        if total > 0:
+            for status, count in status_counts.items():
+                analytics['pipeline_metrics']['conversion_rates'][status] = round((count / total) * 100, 1)
+        
+        # Top performers (highest match scores)
+        top_candidates = sorted(candidates, key=lambda x: x.get('match_score', 0), reverse=True)[:5]
+        for candidate in top_candidates:
+            student = candidate.get('student', {})
+            analytics['pipeline_metrics']['top_performers'].append({
+                'candidate_id': candidate.get('id'),
+                'student_id': candidate.get('student_id'),
+                'match_score': candidate.get('match_score', 0),
+                'status': candidate.get('status'),
+                'skills_count': len(student.get('skills', [])) if student else 0,
+                'gpa': student.get('gpa') if student else None,
+                'year': student.get('year') if student else None
+            })
+        
+        return JSONResponse({
+            "status": "success",
+            "analytics": analytics
+        })
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error getting session analytics: {e}")
+        return JSONResponse({
+            "status": "error",
+            "message": f"Failed to get session analytics: {str(e)}"
         }, status_code=500) 
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

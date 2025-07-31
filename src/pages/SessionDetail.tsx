@@ -10,15 +10,18 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useHiringSessions } from '@/hooks/useHiringSessions';
 import { useSessionCandidates, useUpdateCandidateStatus } from '@/hooks/useSessionCandidates';
-import { ArrowLeft, Users, Target, Calendar, Edit2, Save, X } from 'lucide-react';
+import { ArrowLeft, Users, Target, Calendar, Edit2, Save, X, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Layout } from '@/components/Layout';
 import { JobRequirementsDisplay } from '@/components/JobRequirementsDisplay';
+import CandidateMatchingSystem from '@/components/CandidateMatchingSystem';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function SessionDetail() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   
   const { data: sessions } = useHiringSessions();
   const { data: candidates } = useSessionCandidates(sessionId!);
@@ -39,6 +42,15 @@ export default function SessionDetail() {
   const [newSkill, setNewSkill] = useState('');
   const [newYear, setNewYear] = useState('');
   const [isExtracting, setIsExtracting] = useState(false);
+  const [isFindingMatches, setIsFindingMatches] = useState(false);
+
+  // Debug authentication state
+  console.log('SessionDetail Debug:', {
+    sessionId,
+    user: user?.id,
+    sessionExists: !!session,
+    candidatesCount: candidates?.length || 0
+  });
 
   const handleExtractFromDescription = async () => {
     if (!session?.description) {
@@ -93,12 +105,53 @@ export default function SessionDetail() {
     }
   };
 
+  const handleFindMatchingStudents = async () => {
+    if (!sessionId) return;
+
+    setIsFindingMatches(true);
+    
+    try {
+      const response = await fetch(`http://localhost:8000/find-matching-students/${sessionId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        toast({
+          title: "Matching Complete!",
+          description: `Found ${data.total_matches} matching students for this position`,
+        });
+        
+        // Refresh the page to show updated candidates
+        window.location.reload();
+      } else {
+        throw new Error(data.message || 'Failed to find matching students');
+      }
+    } catch (error) {
+      console.error('Error finding matching students:', error);
+      toast({
+        title: "Matching Failed",
+        description: "Unable to find matching students. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsFindingMatches(false);
+    }
+  };
+
   const filteredCandidates = candidates?.filter(candidate => 
     selectedStatus === 'all' || candidate.status === selectedStatus
   ) || [];
 
   const statusCounts = {
-    applied: candidates?.filter(c => c.status === 'applied').length || 0,
     shortlisted: candidates?.filter(c => c.status === 'shortlisted').length || 0,
     waitlisted: candidates?.filter(c => c.status === 'waitlisted').length || 0,
     hired: candidates?.filter(c => c.status === 'hired').length || 0,
@@ -342,113 +395,12 @@ export default function SessionDetail() {
           </TabsList>
 
           <TabsContent value="candidates" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex gap-2">
-                <div className="p-2">Applied: {statusCounts.applied}</div>
-                <div className="p-2">Shortlisted: {statusCounts.shortlisted}</div>
-                <div className="p-2">Waitlisted: {statusCounts.waitlisted}</div>
-                <div className="p-2">Hired: {statusCounts.hired}</div>
-                <div className="p-2">Rejected: {statusCounts.rejected}</div>
-              </div>
-              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Candidates</SelectItem>
-                  <SelectItem value="applied">Applied</SelectItem>
-                  <SelectItem value="shortlisted">Shortlisted</SelectItem>
-                  <SelectItem value="waitlisted">Waitlisted</SelectItem>
-                  <SelectItem value="hired">Hired</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-4">
-              {filteredCandidates.map((candidate) => (
-                <Card key={candidate.id}>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-4 mb-2">
-                          <h3 className="font-semibold">{candidate.student?.profile?.full_name}</h3>
-                          <Badge variant={getStatusBadgeVariant(candidate.status)}>
-                            {candidate.status}
-                          </Badge>
-                          <Badge variant="outline" className="bg-primary/10">
-                            {candidate.match_score}% match
-                          </Badge>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-muted-foreground">
-                          <div>
-                            <p className="font-medium">Email</p>
-                            <p>{candidate.student?.profile?.email}</p>
-                          </div>
-                          <div>
-                            <p className="font-medium">Department</p>
-                            <p>{candidate.student?.department || 'N/A'}</p>
-                          </div>
-                          <div>
-                            <p className="font-medium">Year</p>
-                            <p>{candidate.student?.year || 'N/A'}</p>
-                          </div>
-                          <div>
-                            <p className="font-medium">GPA</p>
-                            <p>{candidate.student?.gpa || 'N/A'}</p>
-                          </div>
-                        </div>
-
-                        {candidate.student?.skills && candidate.student.skills.length > 0 && (
-                          <div className="mt-3">
-                            <p className="text-sm font-medium mb-1">Skills:</p>
-                            <div className="flex flex-wrap gap-1">
-                              {candidate.student.skills.slice(0, 5).map((skill, index) => (
-                                <Badge key={index} variant="outline" className="text-xs">
-                                  {skill}
-                                </Badge>
-                              ))}
-                              {candidate.student.skills.length > 5 && (
-                                <Badge variant="outline" className="text-xs">
-                                  +{candidate.student.skills.length - 5} more
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="ml-4">
-                        <Select
-                          value={candidate.status}
-                          onValueChange={(value) => handleStatusUpdate(candidate.id, value)}
-                        >
-                          <SelectTrigger className="w-32">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="applied">Applied</SelectItem>
-                            <SelectItem value="shortlisted">Shortlisted</SelectItem>
-                            <SelectItem value="waitlisted">Waitlisted</SelectItem>
-                            <SelectItem value="hired">Hired</SelectItem>
-                            <SelectItem value="rejected">Rejected</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-
-              {filteredCandidates.length === 0 && (
-                <Card>
-                  <CardContent className="p-8 text-center">
-                    <p className="text-muted-foreground">No candidates found for the selected filter.</p>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+            <CandidateMatchingSystem
+              sessionId={sessionId!}
+              candidates={candidates || []}
+              onStatusUpdate={handleStatusUpdate}
+              onRefreshMatches={handleFindMatchingStudents}
+            />
           </TabsContent>
 
           <TabsContent value="details" className="space-y-6">
