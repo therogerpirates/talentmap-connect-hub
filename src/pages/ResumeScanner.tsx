@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+~import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +11,8 @@ import { useToast } from '@/hooks/use-toast';
 import ResumeUpload from '@/components/ResumeUpload';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudentData, useUpdateStudentData } from '@/hooks/useStudentData';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface ExtractedData {
   skills: string[];
@@ -27,11 +29,55 @@ interface AISuggestions {
   learningPath: string[];
 }
 
+// Helper functions to generate intelligent suggestions based on real data
+const generateSkillRecommendations = (currentSkills: string[]): string[] => {
+  const skillCategories = {
+    frontend: ['React', 'Vue', 'Angular', 'TypeScript', 'Next.js'],
+    backend: ['Node.js', 'Express', 'FastAPI', 'Django', 'Spring Boot'],
+    database: ['PostgreSQL', 'MongoDB', 'Redis', 'MySQL'],
+    cloud: ['AWS', 'Azure', 'GCP', 'Docker', 'Kubernetes'],
+    tools: ['Git', 'CI/CD', 'Testing', 'Monitoring']
+  };
+
+  const recommendations = [];
+  const skillsLower = currentSkills.map(s => s.toLowerCase());
+  
+  // Suggest complementary skills
+  if (skillsLower.includes('react') && !skillsLower.includes('typescript')) {
+    recommendations.push('TypeScript for better type safety in React projects');
+  }
+  if (skillsLower.includes('python') && !skillsLower.includes('docker')) {
+    recommendations.push('Docker for containerization and deployment');
+  }
+  if ((skillsLower.includes('react') || skillsLower.includes('node.js')) && !skillsLower.some(s => s.includes('aws') || s.includes('cloud'))) {
+    recommendations.push('AWS or Azure cloud services');
+  }
+  
+  // Add general recommendations
+  recommendations.push('GraphQL for efficient API design');
+  recommendations.push('Testing frameworks like Jest and Cypress');
+  
+  return recommendations.slice(0, 5);
+};
+
+const generateLearningPath = (currentSkills: string[]): string[] => {
+  const paths = [
+    'Master TypeScript fundamentals (2-3 weeks)',
+    'Learn Docker basics and containerization (1-2 weeks)',
+    'Explore cloud platforms - start with AWS free tier (3-4 weeks)',
+    'Practice system design and architecture (ongoing)',
+    'Contribute to open source projects (ongoing)'
+  ];
+  
+  return paths;
+};
+
 const ResumeScanner = () => {
-  const { signOut, profile } = useAuth();
+  const { signOut, profile, user } = useAuth();
   const { data: studentData, isLoading: studentLoading } = useStudentData();
   const updateStudentMutation = useUpdateStudentData();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   const [extractedData, setExtractedData] = useState<ExtractedData>({
     skills: [],
@@ -54,15 +100,68 @@ const ResumeScanner = () => {
   useEffect(() => {
     if (studentData) {
       setHasResume(!!studentData.resume_url);
-      // Initialize with existing data if available
-      if (studentData.skills) {
-        setExtractedData(prev => ({
-          ...prev,
-          skills: studentData.skills || []
-        }));
+      
+      // Only load data if it actually exists in the database
+      const extractedData = {
+        skills: Array.isArray(studentData.skills) && studentData.skills.length > 0 ? studentData.skills as string[] : [],
+        projects: Array.isArray(studentData.projects) && studentData.projects.length > 0 ? studentData.projects as string[] : [],
+        experience: Array.isArray(studentData.experience) && studentData.experience.length > 0 ? studentData.experience as string[] : [],
+        cgpa: studentData.gpa || '',
+        tenthMark: studentData.tenth_percentage?.toString() || '',
+        twelfthMark: studentData.twelfth_percentage?.toString() || ''
+      };
+      
+      // Only set extracted data if there's actual data from the database
+      setExtractedData(extractedData);
+      
+      // Generate AI suggestions only if we have real skills data
+      if (extractedData.skills.length > 0) {
+        setAiSuggestions({
+          resumeImprovements: [
+            'Add quantifiable achievements to your project descriptions',
+            'Include specific technologies and frameworks used in each project',
+            studentData.summary ? 'Great! Your resume has a good summary section' : 'Add a summary section highlighting your key strengths',
+            studentData.ats_score && studentData.ats_score > 80 ? `Your ATS score is excellent: ${studentData.ats_score}/100!` : `Consider improving your ATS compatibility (current score: ${studentData.ats_score || 0}/100)`
+          ],
+          skillRecommendations: generateSkillRecommendations(extractedData.skills),
+          learningPath: generateLearningPath(extractedData.skills)
+        });
+      } else {
+        // Clear suggestions if no real data
+        setAiSuggestions({
+          resumeImprovements: [],
+          skillRecommendations: [],
+          learningPath: []
+        });
       }
     }
   }, [studentData]);
+
+  // New useEffect to listen for data changes and refresh
+  useEffect(() => {
+    if (user?.id && !isExtracting) {
+      // Set up a listener for real-time changes
+      const channel = supabase
+        .channel('student-data-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'students',
+            filter: `id=eq.${user.id}`
+          },
+          (payload) => {
+            // The studentData query should automatically refetch due to React Query
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [user?.id, isExtracting]);
 
   const handleResumeUpload = async (success: boolean) => {
     if (success) {
@@ -70,56 +169,73 @@ const ResumeScanner = () => {
       setIsExtracting(true);
       
       try {
-        // Simulate AI extraction process
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Clear previous extracted data when uploading new resume
+        setExtractedData({
+          skills: [],
+          projects: [],
+          experience: [],
+          cgpa: '',
+          tenthMark: '',
+          twelfthMark: ''
+        });
         
-        // Mock extracted data - in real implementation, this would come from AI
-        const mockExtractedData: ExtractedData = {
-          skills: ['JavaScript', 'React', 'Node.js', 'Python', 'SQL', 'Git'],
-          projects: [
-            'E-commerce Platform - Built a full-stack e-commerce application using React and Node.js',
-            'Task Management App - Developed a collaborative task management tool with real-time updates',
-            'Data Analysis Dashboard - Created interactive dashboards using Python and D3.js'
-          ],
-          experience: [
-            'Software Developer Intern at TechCorp (Summer 2023)',
-            'Frontend Developer at StartupXYZ (Part-time, 2022-2023)',
-            'Open Source Contributor to React ecosystem projects'
-          ],
-          cgpa: '3.8',
-          tenthMark: '92%',
-          twelfthMark: '88%'
-        };
+        setAiSuggestions({
+          resumeImprovements: [],
+          skillRecommendations: [],
+          learningPath: []
+        });
         
-        const mockSuggestions: AISuggestions = {
-          resumeImprovements: [
-            'Add quantifiable achievements to your project descriptions',
-            'Include specific technologies and frameworks used in each project',
-            'Add a summary section highlighting your key strengths',
-            'Consider adding certifications or online courses'
-          ],
-          skillRecommendations: [
-            'TypeScript for better type safety in React projects',
-            'Docker for containerization and deployment',
-            'AWS or Azure cloud services',
-            'GraphQL for efficient API design',
-            'Testing frameworks like Jest and Cypress'
-          ],
-          learningPath: [
-            'Master TypeScript fundamentals (2-3 weeks)',
-            'Learn Docker basics and containerization (1-2 weeks)',
-            'Explore cloud platforms - start with AWS free tier (3-4 weeks)',
-            'Practice system design and architecture (ongoing)',
-            'Contribute to open source projects (ongoing)'
-          ]
-        };
+        // Wait longer for the backend processing to complete
+        await new Promise(resolve => setTimeout(resolve, 4000));
         
-        setExtractedData(mockExtractedData);
-        setAiSuggestions(mockSuggestions);
+        // Invalidate the query cache to force a refetch
+        await queryClient.invalidateQueries({ queryKey: ['student-data', user?.id] });
+        
+        // Wait a bit more for the invalidation to take effect
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Force a fresh fetch from the database
+        const { data: updatedStudentData, error } = await supabase
+          .from('students')
+          .select('*')
+          .eq('id', user?.id)
+          .single();
+
+        if (updatedStudentData) {
+          // Use the real extracted data from the backend
+          const realExtractedData: ExtractedData = {
+            skills: Array.isArray(updatedStudentData.skills) ? updatedStudentData.skills as string[] : [],
+            projects: Array.isArray(updatedStudentData.projects) ? updatedStudentData.projects as string[] : [],
+            experience: Array.isArray(updatedStudentData.experience) ? updatedStudentData.experience as string[] : [],
+            cgpa: updatedStudentData.gpa || '',
+            tenthMark: (updatedStudentData as any).tenth_percentage || '',
+            twelfthMark: (updatedStudentData as any).twelfth_percentage || ''
+          };
+          
+          // Generate AI suggestions based on the real data
+          const realSuggestions: AISuggestions = {
+            resumeImprovements: [
+              'Add quantifiable achievements to your project descriptions',
+              'Include specific technologies and frameworks used in each project',
+              updatedStudentData.summary ? 'Great! Your resume has a good summary section' : 'Add a summary section highlighting your key strengths',
+              updatedStudentData.ats_score && updatedStudentData.ats_score > 80 ? `Your ATS score is excellent: ${updatedStudentData.ats_score}/100!` : `Consider improving your ATS compatibility (current score: ${updatedStudentData.ats_score || 0}/100)`,
+              'Use action verbs to describe your accomplishments',
+              'Include metrics and numbers to showcase impact'
+            ].slice(0, 4),
+            skillRecommendations: generateSkillRecommendations(Array.isArray(updatedStudentData.skills) ? updatedStudentData.skills as string[] : []),
+            learningPath: generateLearningPath(Array.isArray(updatedStudentData.skills) ? updatedStudentData.skills as string[] : [])
+          };
+          
+          setExtractedData(realExtractedData);
+          setAiSuggestions(realSuggestions);
+          
+        } else {
+          throw new Error('Failed to fetch updated student data');
+        }
         
         toast({
-          title: "Resume Analyzed Successfully!",
-          description: "AI has extracted your information and provided personalized suggestions."
+          title: "Resume Re-Analyzed Successfully!",
+          description: "Your profile has been updated with the latest information from your new resume."
         });
       } catch (error) {
         toast({
@@ -141,24 +257,79 @@ const ResumeScanner = () => {
     });
   };
 
-  const saveExtractedData = async () => {
-    try {
-      await updateStudentMutation.mutateAsync({
-        skills: extractedData.skills,
-        cgpa: extractedData.cgpa,
-        // Add other fields as needed
-      });
+  // Comment out the old saveExtractedData function since we auto-save now
+  // const saveExtractedData = async () => {
+  //   try {
+  //     await updateStudentMutation.mutateAsync({
+  //       skills: extractedData.skills,
+  //       cgpa: extractedData.cgpa,
+  //       // Add other fields as needed
+  //     });
       
-      toast({
-        title: "Data Saved Successfully!",
-        description: "Your extracted information has been saved to your profile."
-      });
-    } catch (error: any) {
-      toast({
-        title: "Save Failed",
-        description: error.message || "Failed to save extracted data.",
-        variant: "destructive"
-      });
+  //     toast({
+  //       title: "Data Saved Successfully!",
+  //       description: "Your extracted information has been saved to your profile."
+  //     });
+  //   } catch (error: any) {
+  //     toast({
+  //       title: "Save Failed",
+  //       description: error.message || "Failed to save extracted data.",
+  //       variant: "destructive"
+  //     });
+  //   }
+  // };
+
+  // New function to manually refresh analysis
+  const refreshAnalysis = async () => {
+    if (hasResume && user?.id) {
+      setIsExtracting(true);
+      
+      try {
+        // Force a fresh fetch from the database
+        const { data: freshData, error } = await supabase
+          .from('students')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (freshData && !error) {
+          const refreshedData: ExtractedData = {
+            skills: Array.isArray(freshData.skills) ? freshData.skills as string[] : [],
+            projects: Array.isArray(freshData.projects) ? freshData.projects as string[] : [],
+            experience: Array.isArray(freshData.experience) ? freshData.experience as string[] : [],
+            cgpa: freshData.gpa || '',
+            tenthMark: (freshData as any).tenth_percentage || '',
+            twelfthMark: (freshData as any).twelfth_percentage || ''
+          };
+
+          const refreshedSuggestions: AISuggestions = {
+            resumeImprovements: [
+              'Add quantifiable achievements to your project descriptions',  
+              'Include specific technologies and frameworks used in each project',
+              freshData.summary ? 'Great! Your resume has a good summary section' : 'Add a summary section highlighting your key strengths',
+              freshData.ats_score && freshData.ats_score > 80 ? `Your ATS score is excellent: ${freshData.ats_score}/100!` : `Consider improving your ATS compatibility (current score: ${freshData.ats_score || 0}/100)`
+            ],
+            skillRecommendations: generateSkillRecommendations(Array.isArray(freshData.skills) ? freshData.skills as string[] : []),
+            learningPath: generateLearningPath(Array.isArray(freshData.skills) ? freshData.skills as string[] : [])
+          };
+
+          setExtractedData(refreshedData);
+          setAiSuggestions(refreshedSuggestions);
+          
+          toast({
+            title: "Analysis Refreshed!",
+            description: "Your resume analysis has been updated with the latest data."
+          });
+        }
+      } catch (error) {
+        toast({
+          title: "Refresh Failed",
+          description: "Could not refresh analysis. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsExtracting(false);
+      }
     }
   };
 
@@ -262,7 +433,12 @@ const ResumeScanner = () => {
                     <span>Upload Resume</span>
                   </CardTitle>
                   <CardDescription>
-                    Upload your resume (PDF) to extract information and get AI-powered insights
+                    Upload your resume (PDF) to extract information and get AI-powered insights.
+                    {hasResume && (
+                      <span className="block mt-2 text-orange-600 font-medium">
+                        💡 Re-uploading will update: Skills, Projects, Experience, Academic scores, ATS score, and AI summary
+                      </span>
+                    )}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -279,8 +455,15 @@ const ResumeScanner = () => {
                         <Sparkles className="w-8 h-8 text-primary" />
                       </div>
                       <div>
-                        <h3 className="text-lg font-medium">Analyzing Resume...</h3>
-                        <p className="text-sm text-muted-foreground">AI is extracting information and generating insights</p>
+                        <h3 className="text-lg font-medium">
+                          {hasResume ? 'Re-analyzing Resume...' : 'Analyzing Resume...'}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {hasResume 
+                            ? 'Processing your updated resume and refreshing all extracted information...'
+                            : 'Our AI is extracting skills, projects, experience, and generating insights...'
+                          }
+                        </p>
                       </div>
                       <div className="w-full bg-muted rounded-full h-2">
                         <div className="bg-primary h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
@@ -357,8 +540,14 @@ const ResumeScanner = () => {
                       </div>
                     </div>
 
-                    <Button onClick={saveExtractedData} className="w-full gradient-primary text-white">
+                    {/* Comment out the old save button since we auto-save now */}
+                    {/* <Button onClick={saveExtractedData} className="w-full gradient-primary text-white">
                       Save to Profile
+                    </Button> */}
+                    
+                    {/* New refresh analysis button */}
+                    <Button onClick={refreshAnalysis} variant="outline" className="w-full" disabled={isExtracting}>
+                      {isExtracting ? 'Re-analyzing...' : 'Refresh Analysis'}
                     </Button>
                   </CardContent>
                 </Card>

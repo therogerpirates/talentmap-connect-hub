@@ -76,10 +76,15 @@ const ResumeUpload = ({ onUploadSuccess, hasExistingResume = false }: ResumeUplo
     setSelectedFile(file);
   };
 
-  const handleUpload = async () => {
+  const handleUpload = async (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+    
     if (!selectedFile || !user) return;
 
     setIsUploading(true);
+    setShowUploadDialog(false); // Close dialog when upload starts
     
     try {
       // Create unique filename
@@ -126,7 +131,7 @@ const ResumeUpload = ({ onUploadSuccess, hasExistingResume = false }: ResumeUplo
       
       toast({
         title: "Upload Successful!",
-        description: "Your resume has been uploaded, embedded, and is now available to recruiters."
+        description: "Your resume has been uploaded and is being analyzed. Please wait for the analysis to complete."
       });
     } catch (error: any) {
       console.error('Upload error:', error);
@@ -144,12 +149,39 @@ const ResumeUpload = ({ onUploadSuccess, hasExistingResume = false }: ResumeUplo
   const resetUpload = () => {
     setSelectedFile(null);
     setUploadStatus('idle');
+    setShowUploadDialog(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
-  if (uploadStatus === 'success' || hasExistingResume) {
+  // Comment out the original success state that blocks re-upload
+  // if (uploadStatus === 'success' || hasExistingResume) {
+  //   return (
+  //     <div className="text-center space-y-4">
+  //       <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+  //         <CheckCircle className="w-8 h-8 text-green-600" />
+  //       </div>
+  //       <div>
+  //         <h3 className="text-lg font-medium text-gray-900 dark:text-white transition-colors duration-300">Resume Uploaded Successfully!</h3>
+  //         <p className="text-sm text-gray-600 mt-1">
+  //           Your resume is now visible to recruiters and included in search results.
+  //         </p>
+  //       </div>
+  //       <div className="space-y-2">
+  //         <Button variant="outline" onClick={resetUpload}>
+  //           Upload New Resume
+  //         </Button>
+  //         <p className="text-xs text-gray-500">
+  //           Uploading a new resume will replace your current one.
+  //         </p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
+
+  // New improved success state that shows upload success but allows re-upload
+  if (uploadStatus === 'success') {
     return (
       <div className="text-center space-y-4">
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
@@ -158,15 +190,15 @@ const ResumeUpload = ({ onUploadSuccess, hasExistingResume = false }: ResumeUplo
         <div>
           <h3 className="text-lg font-medium text-gray-900 dark:text-white transition-colors duration-300">Resume Uploaded Successfully!</h3>
           <p className="text-sm text-gray-600 mt-1">
-            Your resume is now visible to recruiters and included in search results.
+            Your resume has been processed and analyzed. All fields have been updated.
           </p>
         </div>
         <div className="space-y-2">
           <Button variant="outline" onClick={resetUpload}>
-            Upload New Resume
+            Upload Another Resume
           </Button>
           <p className="text-xs text-gray-500">
-            Uploading a new resume will replace your current one.
+            Upload a new resume to update your profile and re-analyze your information.
           </p>
         </div>
       </div>
@@ -192,8 +224,8 @@ const ResumeUpload = ({ onUploadSuccess, hasExistingResume = false }: ResumeUplo
         </div>
         
         <div className="flex space-x-3">
-          <Button onClick={() => setShowUploadDialog(true)} className="flex-1">
-            Update Resume
+          <Button onClick={handleUpload} className="flex-1" disabled={isUploading}>
+            {isUploading ? 'Uploading...' : 'Upload Resume'}
           </Button>
           <Button variant="outline" onClick={resetUpload}>
             Cancel
@@ -203,18 +235,18 @@ const ResumeUpload = ({ onUploadSuccess, hasExistingResume = false }: ResumeUplo
     );
   }
 
-  if (uploadStatus === 'uploading') {
+  if (uploadStatus === 'uploading' || isUploading) {
     return (
       <div className="text-center space-y-4">
-        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto animate-pulse">
-          <Upload className="w-8 h-8 text-black" />
+        <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto animate-pulse">
+          <Upload className="w-8 h-8 text-primary animate-bounce" />
         </div>
         <div>
-          <h3 className="text-lg font-medium text-gray-900">Uploading...</h3>
-          <p className="text-sm text-gray-600">Please wait while we upload your resume.</p>
+          <h3 className="text-lg font-medium text-gray-900">Uploading & Processing...</h3>
+          <p className="text-sm text-gray-600">Please wait while we upload and analyze your resume.</p>
         </div>
         <div className="w-full bg-gray-200 rounded-full h-2">
-          <div className="bg-black h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+          <div className="bg-primary h-2 rounded-full animate-pulse" style={{ width: '75%' }}></div>
         </div>
       </div>
     );
@@ -285,10 +317,16 @@ const ResumeUpload = ({ onUploadSuccess, hasExistingResume = false }: ResumeUplo
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleUpload} className="space-y-4">
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            if (selectedFile) {
+              handleUpload(e);
+            }
+          }} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="resume" className="text-gray-900 dark:text-white transition-colors duration-300">Resume File</Label>
               <Input
+                ref={fileInputRef}
                 id="resume"
                 type="file"
                 accept=".pdf,.doc,.docx"
@@ -298,13 +336,23 @@ const ResumeUpload = ({ onUploadSuccess, hasExistingResume = false }: ResumeUplo
               <p className="text-sm text-gray-500 dark:text-gray-400 transition-colors duration-300">
                 Accepted formats: PDF, DOC, DOCX (Max size: 5MB)
               </p>
+              {selectedFile && (
+                <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-800">
+                  <p className="text-sm text-green-700 dark:text-green-300">
+                    ✓ Selected: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end space-x-2">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setShowUploadDialog(false)}
+                onClick={() => {
+                  setShowUploadDialog(false);
+                  setSelectedFile(null);
+                }}
                 className="text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-300"
               >
                 Cancel

@@ -36,7 +36,18 @@ OLLAMA_MODEL = "bge-m3:latest"
 
 #GROQ_API_URL = "https://api.groq.com/v1/embeddings"
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY") # It's safer to use environment variables
-groq_client = Groq(api_key=GROQ_API_KEY)
+
+# Initialize Groq client with error handling
+try:
+    if GROQ_API_KEY:
+        groq_client = Groq(api_key=GROQ_API_KEY)
+        print("Groq client initialized successfully")
+    else:
+        groq_client = None
+        print("GROQ_API_KEY not found, Groq client not initialized")
+except Exception as e:
+    print(f"Failed to initialize Groq client: {e}")
+    groq_client = None
 
 def extract_text_from_pdf(file_bytes: bytes) -> str:
     try:
@@ -50,32 +61,224 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
         traceback.print_exc()
         raise
 
-# Placeholder function for skill extraction
+# Improved function for skill extraction
 def extract_skills_from_text(text: str) -> list[str]:
     """
-    Extracts a list of skills from the resume text.
-    This is a placeholder - you need to implement the actual skill extraction logic.
+    Extracts a list of skills from the resume text using comprehensive keyword matching.
     """
-    # TODO: Implement actual skill extraction logic here.
-    # This could involve keyword matching, regex, or an NLP library.
-    # Example: basic keyword matching
-    potential_skills = ["Python", "JavaScript", "React", "SQL", "AWS", "Docker"]
-    found_skills = [skill for skill in potential_skills if skill.lower() in text.lower()]
-    return found_skills
+    import re
+    
+    # Comprehensive list of skills to look for
+    all_skills = [
+        # Programming Languages
+        "Python", "JavaScript", "Java", "C++", "C#", "TypeScript", "Go", "Rust", "Swift", "Kotlin",
+        "PHP", "Ruby", "Scala", "R", "MATLAB", "Perl", "Shell", "Bash", "PowerShell",
+        
+        # Web Technologies
+        "React", "Angular", "Vue.js", "Node.js", "Express", "Next.js", "Django", "Flask", 
+        "Spring", "Laravel", "Rails", "jQuery", "HTML", "CSS", "SASS", "SCSS", "Bootstrap",
+        "Tailwind", "Material-UI", "Chakra UI",
+        
+        # Databases
+        "SQL", "MySQL", "PostgreSQL", "MongoDB", "SQLite", "Redis", "Cassandra", "DynamoDB",
+        "Oracle", "SQL Server", "MariaDB", "Firebase", "ChromaDB",
+        
+        # Cloud & DevOps
+        "AWS", "Azure", "GCP", "Google Cloud", "Docker", "Kubernetes", "Jenkins", "CI/CD",
+        "Terraform", "Ansible", "Chef", "Puppet", "Nginx", "Apache",
+        
+        # AI/ML & Data Science
+        "Machine Learning", "Deep Learning", "TensorFlow", "PyTorch", "Scikit-learn", "Pandas",
+        "NumPy", "Matplotlib", "Seaborn", "Jupyter", "OpenCV", "NLP", "Computer Vision",
+        "Data Science", "Big Data", "Spark", "Hadoop", "Kafka", "Airflow", "MLflow",
+        "Hugging Face", "Transformers", "BERT", "GPT", "LangChain", "LangGraph", "LLM",
+        "Generative AI", "RAG", "Vector Search", "Embeddings", "Ollama", "Groq",
+        
+        # Mobile Development
+        "React Native", "Flutter", "iOS", "Android", "Xamarin", "Ionic",
+        
+        # Tools & Technologies
+        "Git", "GitHub", "GitLab", "Bitbucket", "VSCode", "IntelliJ", "Eclipse", "Vim",
+        "Linux", "Unix", "Windows", "macOS", "Postman", "Swagger", "REST API", "GraphQL",
+        "WebSocket", "gRPC", "Microservices", "Agile", "Scrum", "Jira", "Confluence",
+        
+        # Testing
+        "Jest", "Cypress", "Selenium", "Junit", "PyTest", "Mocha", "Chai", "Enzyme",
+        
+        # Other
+        "Blockchain", "Ethereum", "Solidity", "Unity", "Unreal Engine", "Figma", "Adobe",
+        "Photoshop", "Illustrator", "Sketch", "Blender", "AutoCAD"
+    ]
+    
+    found_skills = []
+    text_lower = text.lower()
+    
+    for skill in all_skills:
+        # Use word boundaries to avoid partial matches
+        pattern = r'\b' + re.escape(skill.lower()) + r'\b'
+        if re.search(pattern, text_lower):
+            found_skills.append(skill)
+    
+    # Remove duplicates and return
+    return list(set(found_skills))
 
-# Placeholder function for extracting experience and internship status
+# Improved function for extracting academic information
+def extract_academic_info(text: str) -> dict:
+    """
+    Extracts CGPA, 10th marks, and 12th marks from resume text.
+    """
+    import re
+    
+    academic_info = {
+        "cgpa": None,
+        "tenth_percentage": None,
+        "twelfth_percentage": None
+    }
+    
+    # CGPA patterns
+    cgpa_patterns = [
+        r'cgpa[:\s]*(\d+\.?\d*)',
+        r'gpa[:\s]*(\d+\.?\d*)',
+        r'cumulative[:\s]*gpa[:\s]*(\d+\.?\d*)',
+        r'overall[:\s]*gpa[:\s]*(\d+\.?\d*)'
+    ]
+    
+    for pattern in cgpa_patterns:
+        match = re.search(pattern, text.lower())
+        if match:
+            cgpa_value = float(match.group(1))
+            # Validate CGPA range (typically 0-10 or 0-4)
+            if 0 <= cgpa_value <= 10:
+                academic_info["cgpa"] = cgpa_value
+                break
+    
+    # 10th marks patterns
+    tenth_patterns = [
+        r'10th[:\s]*(\d+\.?\d*)%?',
+        r'class\s*10[:\s]*(\d+\.?\d*)%?',
+        r'sslc[:\s]*(\d+\.?\d*)%?',
+        r'matriculation[:\s]*(\d+\.?\d*)%?'
+    ]
+    
+    for pattern in tenth_patterns:
+        match = re.search(pattern, text.lower())
+        if match:
+            tenth_value = float(match.group(1))
+            # Validate percentage range
+            if 0 <= tenth_value <= 100:
+                academic_info["tenth_percentage"] = tenth_value
+                break
+    
+    # 12th marks patterns
+    twelfth_patterns = [
+        r'12th[:\s]*(\d+\.?\d*)%?',
+        r'class\s*12[:\s]*(\d+\.?\d*)%?',
+        r'hsc[:\s]*(\d+\.?\d*)%?',
+        r'intermediate[:\s]*(\d+\.?\d*)%?',
+        r'higher\s*secondary[:\s]*(\d+\.?\d*)%?'
+    ]
+    
+    for pattern in twelfth_patterns:
+        match = re.search(pattern, text.lower())
+        if match:
+            twelfth_value = float(match.group(1))
+            # Validate percentage range
+            if 0 <= twelfth_value <= 100:
+                academic_info["twelfth_percentage"] = twelfth_value
+                break
+    
+    return academic_info
+
+# Improved function for extracting projects
+def extract_projects_from_text(text: str) -> list[str]:
+    """
+    Extracts project information from resume text.
+    """
+    import re
+    
+    projects = []
+    
+    # Look for project sections
+    project_section_patterns = [
+        r'projects?[:\s]*\n(.*?)(?=\n\s*[A-Z][^:\n]*:|$)',
+        r'project\s*experience[:\s]*\n(.*?)(?=\n\s*[A-Z][^:\n]*:|$)',
+        r'academic\s*projects?[:\s]*\n(.*?)(?=\n\s*[A-Z][^:\n]*:|$)'
+    ]
+    
+    for pattern in project_section_patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE | re.DOTALL)
+        for match in matches:
+            # Split by bullet points or line breaks
+            project_lines = re.split(r'[•\-\*]\s*|(?:\n\s*)+', match.strip())
+            for line in project_lines:
+                line = line.strip()
+                if len(line) > 20:  # Filter out short lines
+                    projects.append(line)
+    
+    # If no structured project section found, look for project-like descriptions
+    if not projects:
+        # Look for lines that might be project descriptions
+        project_keywords = ['built', 'developed', 'created', 'designed', 'implemented', 'application', 'system', 'platform', 'website', 'app']
+        lines = text.split('\n')
+        for line in lines:
+            line = line.strip()
+            if any(keyword in line.lower() for keyword in project_keywords) and len(line) > 30:
+                projects.append(line)
+    
+    return projects[:5]  # Return top 5 projects
+
+# Improved function for extracting experience
+def extract_experience_from_text(text: str) -> list[str]:
+    """
+    Extracts work experience from resume text.
+    """
+    import re
+    
+    experiences = []
+    
+    # Look for experience sections
+    experience_section_patterns = [
+        r'experience[:\s]*\n(.*?)(?=\n\s*[A-Z][^:\n]*:|$)',
+        r'work\s*experience[:\s]*\n(.*?)(?=\n\s*[A-Z][^:\n]*:|$)',
+        r'professional\s*experience[:\s]*\n(.*?)(?=\n\s*[A-Z][^:\n]*:|$)',
+        r'employment[:\s]*\n(.*?)(?=\n\s*[A-Z][^:\n]*:|$)'
+    ]
+    
+    for pattern in experience_section_patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE | re.DOTALL)
+        for match in matches:
+            # Split by bullet points or line breaks
+            exp_lines = re.split(r'[•\-\*]\s*|(?:\n\s*)+', match.strip())
+            for line in exp_lines:
+                line = line.strip()
+                if len(line) > 20:  # Filter out short lines
+                    experiences.append(line)
+    
+    # Look for job titles and companies
+    if not experiences:
+        job_patterns = [
+            r'(intern|developer|engineer|analyst|manager|coordinator|assistant|associate|specialist|consultant|lead|senior|junior)\s+at\s+[A-Za-z\s]+',
+            r'[A-Za-z\s]+\s+at\s+[A-Za-z\s]+\s*\([^)]*\d{4}[^)]*\)'
+        ]
+        
+        for pattern in job_patterns:
+            matches = re.findall(pattern, text, re.IGNORECASE)
+            experiences.extend(matches)
+    
+    return experiences[:5]  # Return top 5 experiences
+
+# Updated function for extracting experience data with has_internship
 def extract_experience_data(text: str) -> dict:
     """
     Extracts experience data, including internship status, from the resume text.
-    This is a placeholder - you need to implement the actual extraction logic.
     """
-    # TODO: Implement actual experience and internship extraction logic here.
-    # This is significantly more complex than skill extraction and may require advanced NLP.
-    # A simple placeholder might just check for keywords like "intern" or "internship".
     has_internship = "internship" in text.lower() or "intern" in text.lower()
-    # In a real application, you'd extract job titles, companies, dates, descriptions, etc.
-    # For this placeholder, we'll just return the internship status.
-    return {"has_internship": has_internship, "experience_entries": []} # Add more fields as needed
+    experience_entries = extract_experience_from_text(text)
+    
+    return {
+        "has_internship": has_internship, 
+        "experience_entries": experience_entries
+    }
 
 # Placeholder function for calculating ATS score
 def calculate_ats_score(text: str) -> int:
@@ -99,25 +302,43 @@ def calculate_ats_score(text: str) -> int:
     return max(0, min(100, score))
 
 async def get_embedding(text: str):
+    # Validate input text
+    if not text or not text.strip():
+        print("Warning: Empty text provided for embedding")
+        return []  # Return empty list instead of None
+    
     payload = {
         "model": OLLAMA_MODEL,
-        "prompt": text
+        "prompt": text.strip()
     }
     try:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:  # Add timeout
             response = await client.post(OLLAMA_URL, json=payload)
             response.raise_for_status()
             data = response.json()
-            return data["embedding"]
+            
+            # Validate embedding response
+            embedding = data.get("embedding", [])
+            if not embedding or len(embedding) == 0:
+                print(f"Warning: Empty embedding returned for text: {text[:100]}...")
+                return []
+            
+            print(f"Generated embedding with {len(embedding)} dimensions")
+            return embedding
     except Exception as e:
         print("Embedding error:", e)
         traceback.print_exc()
-        raise
+        return []  # Return empty list instead of raising
 
 async def generate_summary(text: str) -> str:
-    if not GROQ_API_KEY:
-        print("GROQ_API_KEY not set. Skipping summary generation.")
+    if not GROQ_API_KEY or GROQ_API_KEY.strip() == "" or groq_client is None:
+        print("GROQ_API_KEY not set, empty, or Groq client not initialized. Skipping summary generation.")
         return ""
+    
+    if not text or not text.strip():
+        print("Empty text provided for summary generation.")
+        return ""
+    
     try:
         chat_completion = groq_client.chat.completions.create(
             messages=[
@@ -127,33 +348,89 @@ async def generate_summary(text: str) -> str:
                 },
                 {
                     "role": "user",
-                    "content": text,
+                    "content": text.strip(),
                 },
             ],
             model="llama3-8b-8192", # Or choose another Groq model
             temperature=0.7,
             max_tokens=500, # Adjust as needed
         )
-        return chat_completion.choices[0].message.content or ""
+        summary = chat_completion.choices[0].message.content or ""
+        print(f"Generated summary: {len(summary)} characters")
+        return summary
     except Exception as e:
         print("Groq summarization error:", e)
         traceback.print_exc()
-        # Decide how to handle this - maybe return empty string or raise? Returning empty for now.
+        # Return empty string instead of raising to continue processing
         return ""
+
+# New endpoint to test Groq connection
+@app.get("/test-groq/")
+async def test_groq():
+    try:
+        if not GROQ_API_KEY or GROQ_API_KEY.strip() == "":
+            return JSONResponse({
+                "status": "error",
+                "error": "GROQ_API_KEY not set or empty"
+            }, status_code=400)
+        
+        test_text = "This is a test resume. John is a software engineer with 5 years of experience in Python and JavaScript."
+        summary = await generate_summary(test_text)
+        
+        return JSONResponse({
+            "status": "success",
+            "api_key_set": bool(GROQ_API_KEY),
+            "api_key_preview": f"{GROQ_API_KEY[:10]}..." if GROQ_API_KEY else "None",
+            "summary_generated": bool(summary),
+            "summary_length": len(summary) if summary else 0,
+            "summary_preview": summary[:100] + "..." if summary and len(summary) > 100 else summary
+        })
+    except Exception as e:
+        return JSONResponse({
+            "status": "error",
+            "api_key_set": bool(GROQ_API_KEY),
+            "error": str(e)
+        }, status_code=500)
+
+# New endpoint to test Ollama connection
+@app.get("/test-ollama/")
+async def test_ollama():
+    try:
+        test_text = "This is a test sentence for embedding generation."
+        embedding = await get_embedding(test_text)
+        
+        return JSONResponse({
+            "status": "success",
+            "ollama_url": OLLAMA_URL,
+            "model": OLLAMA_MODEL,
+            "embedding_dim": len(embedding) if embedding else 0,
+            "embedding_preview": embedding[:5] if embedding and len(embedding) >= 5 else embedding
+        })
+    except Exception as e:
+        return JSONResponse({
+            "status": "error",
+            "ollama_url": OLLAMA_URL,
+            "model": OLLAMA_MODEL,
+            "error": str(e)
+        }, status_code=500)
 
 @app.post("/embed-resume/")
 async def embed_resume(
     student_id: str = Form(...),
     file: UploadFile = File(...)
 ):
+    print(f"Processing resume for student: {student_id}")
+    print(f"File name: {file.filename}, Content type: {file.content_type}")
+    
     # 1. Read PDF in-memory
     try:
         file_bytes = await file.read()
         text = extract_text_from_pdf(file_bytes)
         if not text.strip():
             print("No text found in PDF.")
-            # Don't raise HTTPException for 400 here, just return error JSON
             return JSONResponse({"status": "error", "step": "pdf_extraction", "detail": "No text found in PDF."}, status_code=400)
+        print(f"Extracted text length: {len(text)} characters")
+        print(f"Text preview: {text[:200]}...")
     except Exception as e:
         print("PDF extraction failed:", e)
         return JSONResponse({"status": "error", "step": "pdf_extraction", "detail": str(e)}, status_code=500)
@@ -161,9 +438,15 @@ async def embed_resume(
     # 2. Get embedding from Ollama
     try:
         embedding = await get_embedding(text)
+        if not embedding or len(embedding) == 0:
+            print("Warning: No embedding generated, using placeholder")
+            # Create a placeholder embedding with required dimensions (typically 1024 for bge-m3)
+            embedding = [0.0] * 1024  # Adjust dimension based on your model
     except Exception as e:
         print("Embedding failed:", e)
-        return JSONResponse({"status": "error", "step": "embedding", "detail": str(e)}, status_code=500)
+        # Use placeholder embedding instead of failing
+        embedding = [0.0] * 1024
+        # Don't return error, continue processing
 
     # 3. Generate summary using Groq
     summary = await generate_summary(text)
@@ -171,79 +454,93 @@ async def embed_resume(
     # 4. Extract skills from text
     try:
         skills = extract_skills_from_text(text)
-        print(f"Extracted skills: {skills}") # Log extracted skills
+        print(f"Extracted skills: {skills}")
     except Exception as e:
         print("Skill extraction failed:", e)
-        # Decide how to handle skill extraction failure - proceed without skills or return error?
-        # For now, we'll just log and proceed.
-        skills = [] # Ensure skills is an empty list on failure
+        skills = []
 
-    # 5. Extract experience data
+    # 5. Extract academic information (CGPA, 10th, 12th marks)
+    try:
+        academic_info = extract_academic_info(text)
+        print(f"Extracted academic info: {academic_info}")
+    except Exception as e:
+        print("Academic info extraction failed:", e)
+        academic_info = {"cgpa": None, "tenth_percentage": None, "twelfth_percentage": None}
+
+    # 6. Extract projects
+    try:
+        projects = extract_projects_from_text(text)
+        print(f"Extracted projects: {projects}")
+    except Exception as e:
+        print("Project extraction failed:", e)
+        projects = []
+
+    # 7. Extract experience data
     try:
         experience_data = extract_experience_data(text)
         has_internship = experience_data.get("has_internship", False)
-        # You might also want to store experience_entries if you extract them
-        print(f"Extracted experience data: {experience_data}") # Log extracted data
+        experience_entries = experience_data.get("experience_entries", [])
+        print(f"Extracted experience data: {experience_data}")
     except Exception as e:
         print("Experience extraction failed:", e)
-        # Decide how to handle failure - proceed or return error?
-        # For now, log and proceed with defaults.
         has_internship = False
-        experience_data = {"has_internship": False, "experience_entries": []}
+        experience_entries = []
 
-    # 6. Calculate ATS score
+    # 8. Calculate ATS score
     try:
         ats_score = calculate_ats_score(text)
-        print(f"Calculated ATS score: {ats_score}") # Log the score
+        print(f"Calculated ATS score: {ats_score}")
     except Exception as e:
         print("ATS score calculation failed:", e)
-        # Decide how to handle failure - proceed or return error?
-        # For now, log and proceed with a default score.
-        ats_score = 0 # Default score on failure
+        ats_score = 0
 
-    # 7. Store data in Supabase
+    # 9. Store all extracted data in Supabase
     try:
         update_data = {
             "resume_embeddings": embedding,
             "summary": summary,
             "skills": skills,
-            "has_internship": has_internship, # Add has_internship
-            "ats_score": ats_score # Add ATS score
-            # Add experience_entries here if you decide to store them
+            "projects": projects,
+            "experience": experience_entries,
+            "has_internship": has_internship,
+            "ats_score": ats_score,
         }
-
-        # Only add summary_embedding if summary was generated - kept for potential future use
-        # if summary:
-        #     update_data["summary_embedding"] = await get_embedding(summary) # Need to re-generate if not done yet
+        
+        # Add academic information if available
+        if academic_info.get("cgpa") is not None:
+            update_data["gpa"] = str(academic_info["cgpa"])
+        if academic_info.get("tenth_percentage") is not None:
+            update_data["tenth_percentage"] = academic_info["tenth_percentage"]
+        if academic_info.get("twelfth_percentage") is not None:
+            update_data["twelfth_percentage"] = academic_info["twelfth_percentage"]
 
         response = supabase.table("students").update(
             update_data
         ).eq("id", student_id).execute()
 
-        # Check for error in the response data for RPCs/updates
         if response.data is None or (isinstance(response.data, list) and len(response.data) == 0):
-             # Supabase update doesn't always raise an exception on failure for update/insert
-             # Check if the data was actually updated by verifying the response.data
-             print("Supabase update likely failed or target student not found.", response)
-             # You might want to check the response structure more thoroughly depending on the actual Supabase client response for an update that finds no row.
-             # For now, assuming if data is None/empty list, it didn't find/update the row.
-             return JSONResponse({"status": "error", "step": "supabase_update", "detail": "Supabase update failed or student ID not found."}, status_code=500)
-
-        # Check for APIError which is raised for RPCs but maybe not always for update?
-        # The previous error was an AttributeError on response.error, so removing that check.
+            print("Supabase update likely failed or target student not found.", response)
+            return JSONResponse({"status": "error", "step": "supabase_update", "detail": "Supabase update failed or student ID not found."}, status_code=500)
 
     except Exception as e:
         print("Supabase update failed:", e)
         traceback.print_exc()
         return JSONResponse({"status": "error", "step": "supabase_update", "detail": str(e)}, status_code=500)
 
-    # 2. Get embedding for the SUMMARY from Ollama
+    # 2. Get embedding for the SUMMARY from Ollama (only if summary exists)
     try:
-        # Use the generated summary to create the embedding
-        summary_embedding = await get_embedding(summary)
+        if summary and summary.strip():
+            summary_embedding = await get_embedding(summary)
+            if not summary_embedding or len(summary_embedding) == 0:
+                print("Warning: No summary embedding generated, using placeholder")
+                summary_embedding = [0.0] * 1024
+        else:
+            print("No summary to embed, using placeholder")
+            summary_embedding = [0.0] * 1024
     except Exception as e:
         print("Summary Embedding failed:", e)
-        return JSONResponse({"status": "error", "step": "summary_embedding", "detail": str(e)}, status_code=500)
+        summary_embedding = [0.0] * 1024
+        # Don't return error, continue processing
 
     # 3. Store summary and summary embedding in Supabase
     try:
@@ -273,7 +570,23 @@ async def embed_resume(
         traceback.print_exc()
         return JSONResponse({"status": "error", "step": "supabase_update", "detail": str(e)}, status_code=500)
 
-    return JSONResponse({"status": "success", "embedding_dim": len(embedding), "summary_generated": bool(summary)})
+    return JSONResponse({
+        "status": "success",
+        "data_extracted": {
+            "skills": skills,
+            "projects": projects,
+            "experience": experience_entries,
+            "has_internship": has_internship,
+            "cgpa": academic_info.get("cgpa"),
+            "tenth_percentage": academic_info.get("tenth_percentage"),
+            "twelfth_percentage": academic_info.get("twelfth_percentage"),
+            "ats_score": ats_score
+        },
+        "embedding_dim": len(embedding), 
+        "summary_generated": bool(summary),
+        "embedding_is_placeholder": all(x == 0.0 for x in embedding) if embedding else True,
+        "summary_embedding_is_placeholder": all(x == 0.0 for x in summary_embedding) if summary_embedding else True
+    })
 
 @app.post("/search-students/")
 async def search_students(request: Request):
@@ -376,6 +689,27 @@ async def download_students_csv(student_ids: list[str]):
         print("CSV download error:", e)
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to generate CSV: {e}")
+
+# New endpoint to debug what's stored in the database
+@app.get("/debug-student/{student_id}")
+async def debug_student_data(student_id: str):
+    try:
+        response = supabase.table("students").select("*").eq("id", student_id).execute()
+        if response.data:
+            return {"status": "success", "data": response.data[0]}
+        else:
+            return {"status": "error", "message": "Student not found"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+# New endpoint to list all students for debugging
+@app.get("/debug-students")
+async def debug_all_students():
+    try:
+        response = supabase.table('students').select('*').execute()
+        return {"status": "success", "data": response.data}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 # New endpoint to download resumes as a Zip file
 @app.post("/download-resumes-zip/")
