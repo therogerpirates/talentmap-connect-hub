@@ -13,6 +13,7 @@ import { useSessionCandidates, useUpdateCandidateStatus } from '@/hooks/useSessi
 import { ArrowLeft, Users, Target, Calendar, Edit2, Save, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Layout } from '@/components/Layout';
+import { JobRequirementsDisplay } from '@/components/JobRequirementsDisplay';
 
 export default function SessionDetail() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -37,6 +38,60 @@ export default function SessionDetail() {
   });
   const [newSkill, setNewSkill] = useState('');
   const [newYear, setNewYear] = useState('');
+  const [isExtracting, setIsExtracting] = useState(false);
+
+  const handleExtractFromDescription = async () => {
+    if (!session?.description) {
+      toast({
+        title: "No Description",
+        description: "No job description found to extract from",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsExtracting(true);
+    
+    try {
+      const response = await fetch('http://localhost:8000/process-hiring-session/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          session_id: sessionId!,
+          description: session.description
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        toast({
+          title: "Extraction Successful!",
+          description: `Extracted ${data.extracted_data.required_skills.length} skills and requirements from job description`,
+        });
+        
+        // Refresh the page to show updated data
+        window.location.reload();
+      } else {
+        throw new Error(data.message || 'Failed to extract job information');
+      }
+    } catch (error) {
+      console.error('Error extracting job information:', error);
+      toast({
+        title: "Extraction Failed",
+        description: "Unable to extract job information. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExtracting(false);
+    }
+  };
 
   const filteredCandidates = candidates?.filter(candidate => 
     selectedStatus === 'all' || candidate.status === selectedStatus
@@ -83,6 +138,34 @@ export default function SessionDetail() {
             ...editableSession.eligibility_criteria,
             eligible_years: editableSession.eligible_years,
           },
+        })
+        .eq('id', sessionId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Session details updated successfully",
+      });
+      setIsEditing(false);
+      window.location.reload(); // Refresh to show updated data
+    } catch (error) {
+      console.error('Error updating session:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update session details",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSaveSessionFromJobDisplay = async (data: any) => {
+    try {
+      const { error } = await supabase
+        .from('hiring_sessions')
+        .update({
+          requirements: data.requirements,
+          eligibility_criteria: data.eligibility_criteria,
         })
         .eq('id', sessionId);
 
@@ -369,191 +452,20 @@ export default function SessionDetail() {
           </TabsContent>
 
           <TabsContent value="details" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Session Information</CardTitle>
-                  <div className="flex gap-2">
-                    {!isEditing ? (
-                      <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-                        <Edit2 className="h-4 w-4 mr-2" />
-                        Edit
-                      </Button>
-                    ) : (
-                      <>
-                        <Button variant="outline" size="sm" onClick={() => setIsEditing(false)}>
-                          <X className="h-4 w-4 mr-2" />
-                          Cancel
-                        </Button>
-                        <Button size="sm" onClick={handleSaveSession}>
-                          <Save className="h-4 w-4 mr-2" />
-                          Save
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div>
-                  <h4 className="font-medium mb-2">Description</h4>
-                  <p className="text-muted-foreground">{session.description || 'No description provided'}</p>
-                </div>
-
-                <div>
-                  <h4 className="font-medium mb-2">Required Skills</h4>
-                  {!isEditing ? (
-                    <div className="flex flex-wrap gap-2">
-                      {session.requirements?.required_skills?.map((skill: string, index: number) => (
-                        <Badge key={index} variant="default">{skill}</Badge>
-                      )) || <span className="text-muted-foreground">None specified</span>}
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <div className="flex flex-wrap gap-2">
-                        {editableSession.required_skills.map((skill, index) => (
-                          <div key={index} className="flex items-center gap-1 bg-primary/10 px-2 py-1 rounded">
-                            <span className="text-sm">{skill}</span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-4 w-4 p-0"
-                              onClick={() => removeSkill(skill)}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="Add required skill"
-                          value={newSkill}
-                          onChange={(e) => setNewSkill(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && addSkill()}
-                        />
-                        <Button onClick={addSkill}>Add</Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h4 className="font-medium mb-3">Eligibility Criteria</h4>
-                    {!isEditing ? (
-                      <ul className="text-sm text-muted-foreground space-y-1">
-                        {session.eligibility_criteria?.min_gpa && (
-                          <li>Minimum GPA: {session.eligibility_criteria.min_gpa}</li>
-                        )}
-                        {session.eligibility_criteria?.min_tenth_percentage && (
-                          <li>Minimum 10th %: {session.eligibility_criteria.min_tenth_percentage}</li>
-                        )}
-                        {session.eligibility_criteria?.min_twelfth_percentage && (
-                          <li>Minimum 12th %: {session.eligibility_criteria.min_twelfth_percentage}</li>
-                        )}
-                      </ul>
-                    ) : (
-                      <div className="space-y-3">
-                        <div>
-                          <Label htmlFor="min_gpa">Minimum GPA</Label>
-                          <Input
-                            id="min_gpa"
-                            type="number"
-                            step="0.1"
-                            placeholder="e.g., 7.0"
-                            value={editableSession.eligibility_criteria.min_gpa}
-                            onChange={(e) => setEditableSession(prev => ({
-                              ...prev,
-                              eligibility_criteria: {
-                                ...prev.eligibility_criteria,
-                                min_gpa: e.target.value
-                              }
-                            }))}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="min_tenth">Minimum 10th %</Label>
-                          <Input
-                            id="min_tenth"
-                            type="number"
-                            placeholder="e.g., 85"
-                            value={editableSession.eligibility_criteria.min_tenth_percentage}
-                            onChange={(e) => setEditableSession(prev => ({
-                              ...prev,
-                              eligibility_criteria: {
-                                ...prev.eligibility_criteria,
-                                min_tenth_percentage: e.target.value
-                              }
-                            }))}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="min_twelfth">Minimum 12th %</Label>
-                          <Input
-                            id="min_twelfth"
-                            type="number"
-                            placeholder="e.g., 80"
-                            value={editableSession.eligibility_criteria.min_twelfth_percentage}
-                            onChange={(e) => setEditableSession(prev => ({
-                              ...prev,
-                              eligibility_criteria: {
-                                ...prev.eligibility_criteria,
-                                min_twelfth_percentage: e.target.value
-                              }
-                            }))}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <h4 className="font-medium mb-3">Eligible Years</h4>
-                    {!isEditing ? (
-                      <div>
-                        {session.eligibility_criteria?.eligible_years?.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {session.eligibility_criteria.eligible_years.map((year: string, index: number) => (
-                              <Badge key={index} variant="outline">{year}</Badge>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">None specified</span>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        <div className="flex flex-wrap gap-2">
-                          {editableSession.eligible_years.map((year, index) => (
-                            <div key={index} className="flex items-center gap-1 bg-secondary/50 px-2 py-1 rounded">
-                              <span className="text-sm">{year}</span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-4 w-4 p-0"
-                                onClick={() => removeYear(year)}
-                              >
-                                <X className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder="Add eligible year (e.g., 2024, 3rd Year)"
-                            value={newYear}
-                            onChange={(e) => setNewYear(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && addYear()}
-                          />
-                          <Button onClick={addYear}>Add</Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <JobRequirementsDisplay
+              requirements={session.requirements}
+              eligibility_criteria={session.eligibility_criteria}
+              description={session.description}
+              isEditing={isEditing}
+              onEdit={() => setIsEditing(true)}
+              onSave={(data) => {
+                // Handle save with the new JobRequirementsDisplay data structure
+                handleSaveSessionFromJobDisplay(data);
+              }}
+              onCancel={() => setIsEditing(false)}
+              showExtractButton={true}
+              onExtractFromDescription={handleExtractFromDescription}
+            />
           </TabsContent>
         </Tabs>
       </div>

@@ -12,6 +12,9 @@ from dotenv import load_dotenv
 import os
 import csv # Import csv module
 import zipfile # Import zipfile module
+import re
+from typing import Dict, List, Optional, Union
+import json
 
 # Load environment variables from a .env file
 load_dotenv()
@@ -278,6 +281,252 @@ def extract_experience_data(text: str) -> dict:
     return {
         "has_internship": has_internship, 
         "experience_entries": experience_entries
+    }
+
+# Job Description Extraction Functions for Recruiters
+def extract_required_skills_from_job_desc(description: str) -> List[str]:
+    """
+    Extract required skills from job description text using regex patterns
+    """
+    skills = []
+    description_lower = description.lower()
+    
+    # Common technical skills patterns
+    technical_skills = {
+        'programming_languages': [
+            'python', 'java', 'javascript', 'typescript', 'c++', 'c#', 'php', 'ruby', 'go', 'rust',
+            'kotlin', 'swift', 'scala', 'r', 'matlab', 'perl', 'shell scripting', 'bash'
+        ],
+        'web_technologies': [
+            'html', 'css', 'react', 'angular', 'vue', 'node.js', 'express', 'django', 'flask',
+            'spring boot', 'asp.net', 'laravel', 'codeigniter', 'jquery', 'bootstrap', 'sass', 'less'
+        ],
+        'databases': [
+            'mysql', 'postgresql', 'mongodb', 'sqlite', 'redis', 'oracle', 'sql server', 'dynamodb',
+            'cassandra', 'elasticsearch', 'neo4j', 'mariadb'
+        ],
+        'cloud_platforms': [
+            'aws', 'azure', 'google cloud', 'gcp', 'docker', 'kubernetes', 'jenkins', 'gitlab ci/cd',
+            'terraform', 'ansible', 'vagrant', 'heroku', 'digitalocean'
+        ],
+        'ai_ml': [
+            'machine learning', 'deep learning', 'artificial intelligence', 'tensorflow', 'pytorch',
+            'scikit-learn', 'pandas', 'numpy', 'opencv', 'nltk', 'spacy', 'keras', 'xgboost'
+        ],
+        'tools': [
+            'git', 'github', 'gitlab', 'bitbucket', 'jira', 'confluence', 'slack', 'teams',
+            'visual studio code', 'intellij', 'eclipse', 'postman', 'swagger'
+        ],
+        'mobile': [
+            'android', 'ios', 'react native', 'flutter', 'xamarin', 'ionic', 'cordova'
+        ]
+    }
+    
+    # Search for skills in the description
+    for category, skill_list in technical_skills.items():
+        for skill in skill_list:
+            # Use word boundaries to avoid partial matches
+            pattern = r'\b' + re.escape(skill) + r'\b'
+            if re.search(pattern, description_lower):
+                skills.append(skill.title())
+    
+    # Look for experience patterns (e.g., "2+ years of Python", "experience in Java")  
+    experience_patterns = [
+        r'(?:experience (?:in|with)|knowledge of|proficiency in|familiar with|expertise in)\s+([a-zA-Z\s,/+.-]+?)(?:\s+(?:is|and|or|\.|,|;|required|preferred|desired|essential))',
+        r'(?:must know|should know|required:?|skills:?)\s*([a-zA-Z\s,/+.-]+?)(?:\.|,|;|$)',
+        r'(?:technologies?|tools?|frameworks?):?\s*([a-zA-Z\s,/+.-]+?)(?:\.|,|;|$)'
+    ]
+    
+    # Common technical terms to filter out
+    filter_terms = [
+        'years of', 'experience', 'required', 'preferred', 'must have', 'should have',
+        'knowledge of', 'familiar with', 'expertise in', 'proficiency in', 'data scientist role for',
+        'cloud platforms like aws', 'software engineer', 'full stack developer'
+    ]
+    
+    for pattern in experience_patterns:
+        matches = re.finditer(pattern, description_lower, re.IGNORECASE)
+        for match in matches:
+            skill_text = match.group(1).strip()
+            # Split by common delimiters and clean up
+            skill_candidates = re.split(r'[,/&+\n]', skill_text)
+            for candidate in skill_candidates:
+                candidate = candidate.strip().title()
+                # Filter out non-technical terms and common phrases
+                if (len(candidate) > 2 and len(candidate) < 30 and 
+                    candidate not in skills and 
+                    candidate.lower() not in filter_terms and
+                    not any(term in candidate.lower() for term in filter_terms)):
+                    skills.append(candidate)
+    
+    # Remove duplicates and return first 10 most relevant skills
+    unique_skills = list(dict.fromkeys(skills))[:10]
+    return unique_skills
+
+def extract_eligibility_criteria_from_job_desc(description: str) -> Dict[str, Union[str, List[str], int]]:
+    """
+    Extract eligibility criteria from job description
+    """
+    criteria = {
+        'education': [],
+        'experience_years': 0,
+        'cgpa_minimum': 0.0,
+        'specific_requirements': []
+    }
+    
+    description_lower = description.lower()
+    
+    # Extract education requirements - improved patterns
+    education_patterns = [
+        r'\b(?:bachelor(?:\'?s)?|b\.?tech|b\.?e\.?|b\.?sc|bca)\b',
+        r'\b(?:master(?:\'?s)?|m\.?tech|m\.?e\.?|m\.?sc|mca)\b',
+        r'\b(?:phd|doctorate|doctoral)\b',
+        r'\b(?:computer science|information technology|software engineering)\b',
+        r'\b(?:electronics|electrical|mechanical|civil) engineering\b',
+        r'\b(?:engineering|technology|science) degree\b'
+    ]
+    
+    for pattern in education_patterns:
+        matches = re.findall(pattern, description_lower, re.IGNORECASE)
+        for match in matches:
+            # Clean up the match
+            cleaned_match = match.strip()
+            if len(cleaned_match) > 2 and cleaned_match not in criteria['education']:
+                # Convert common abbreviations to full forms
+                if cleaned_match in ['b.tech', 'btech']:
+                    cleaned_match = 'B.Tech'
+                elif cleaned_match in ['b.e', 'be']:
+                    cleaned_match = 'B.E'
+                elif cleaned_match in ['b.sc', 'bsc']:
+                    cleaned_match = 'B.Sc'
+                elif cleaned_match in ['m.tech', 'mtech']:
+                    cleaned_match = 'M.Tech'
+                elif cleaned_match in ['m.e', 'me']:
+                    cleaned_match = 'M.E'
+                elif cleaned_match == 'bachelor' or cleaned_match == "bachelor's":
+                    cleaned_match = "Bachelor's Degree"
+                elif cleaned_match == 'master' or cleaned_match == "master's":
+                    cleaned_match = "Master's Degree"
+                else:
+                    cleaned_match = cleaned_match.title()
+                
+                criteria['education'].append(cleaned_match)
+    
+    # Extract experience requirements
+    exp_patterns = [
+        r'(\d+)[\s]*(?:\+|plus)?\s*(?:years?|yrs?)\s*(?:of\s*)?(?:experience|exp)',
+        r'(?:minimum|atleast|at least)\s*(\d+)\s*(?:years?|yrs?)',
+        r'(\d+)[-–]\d+\s*(?:years?|yrs?)'
+    ]
+    
+    for pattern in exp_patterns:
+        matches = re.findall(pattern, description_lower)
+        if matches:
+            try:
+                years = max([int(match) for match in matches])
+                criteria['experience_years'] = years
+            except ValueError:
+                pass
+    
+    # Extract CGPA/GPA requirements
+    cgpa_patterns = [
+        r'(?:cgpa|gpa)\s*(?:of|above|minimum|atleast|at least)?\s*(\d+\.?\d*)',
+        r'(?:minimum|atleast|at least)\s*(\d+\.?\d*)\s*(?:cgpa|gpa)',
+        r'grade\s*(?:of|above|minimum)?\s*([a-zA-Z]+)',
+        r'(\d+)\.?\d*\s*(?:cgpa|gpa|grade)'
+    ]
+    
+    for pattern in cgpa_patterns:
+        matches = re.findall(pattern, description_lower)
+        if matches:
+            try:
+                # Handle both numeric and letter grades
+                for match in matches:
+                    if match.replace('.', '').isdigit():
+                        cgpa = float(match)
+                        if cgpa <= 10:  # Assuming 10-point scale
+                            criteria['cgpa_minimum'] = max(criteria['cgpa_minimum'], cgpa)
+                    elif match.upper() in ['A', 'B', 'C']:
+                        # Convert letter grades to approximate CGPA
+                        grade_map = {'A': 8.0, 'B': 7.0, 'C': 6.0}
+                        criteria['cgpa_minimum'] = max(criteria['cgpa_minimum'], grade_map.get(match.upper(), 0))
+            except ValueError:
+                pass
+    
+    # Extract other specific requirements
+    requirement_patterns = [
+        r'(?:must have|should have|required:?|mandatory:?)\s*([^.!?]+)',
+        r'(?:preferred|desirable|good to have):?\s*([^.!?]+)',
+        r'(?:certification|certified) in\s+([^.!?]+)'
+    ]
+    
+    for pattern in requirement_patterns:
+        matches = re.findall(pattern, description_lower, re.IGNORECASE)
+        for match in matches:
+            req = match.strip()
+            if len(req) > 5 and len(req) < 100:
+                criteria['specific_requirements'].append(req.capitalize())
+    
+    return criteria
+
+def extract_eligible_years_from_job_desc(description: str) -> List[int]:
+    """
+    Extract eligible academic years from job description
+    """
+    eligible_years = []
+    description_lower = description.lower()
+    
+    # Patterns for academic year requirements
+    year_patterns = [
+        r'(?:final year|4th year|fourth year)',
+        r'(?:3rd year|third year)',
+        r'(?:2nd year|second year)', 
+        r'(?:1st year|first year)',
+        r'(?:freshers?|fresher)',
+        r'(?:graduates?|passed out)',
+        r'year\s*(?:students?|candidates?)',
+        r'(?:be|btech|b\.tech)\s*(?:final|3rd|4th|third|fourth)',
+        r'(?:2024|2023|2022|2021)\s*(?:pass out|graduate|batch)'
+    ]
+    
+    year_mapping = {
+        'final year': [4],
+        '4th year': [4],
+        'fourth year': [4],
+        '3rd year': [3],
+        'third year': [3],
+        '2nd year': [2],
+        'second year': [2],
+        '1st year': [1],
+        'first year': [1],
+        'freshers': [4],  # Assuming freshers are final year or recent graduates
+        'fresher': [4],
+        'graduates': [4],
+        'passed out': [4]
+    }
+    
+    for pattern in year_patterns:
+        if re.search(pattern, description_lower):
+            for key, years in year_mapping.items():
+                if key in pattern or pattern in key:
+                    eligible_years.extend(years)
+                    break
+    
+    # If no specific year mentioned, assume all years are eligible
+    if not eligible_years:
+        eligible_years = [1, 2, 3, 4]
+    
+    # Remove duplicates and sort
+    return sorted(list(set(eligible_years)))
+
+def extract_job_info_from_description(description: str) -> Dict:
+    """
+    Main function to extract all job information from description
+    """
+    return {
+        'required_skills': extract_required_skills_from_job_desc(description),
+        'eligibility_criteria': extract_eligibility_criteria_from_job_desc(description),
+        'eligible_years': extract_eligible_years_from_job_desc(description)
     }
 
 # Placeholder function for calculating ATS score
@@ -768,4 +1017,289 @@ async def download_resumes_zip(student_ids: list[str]):
     except Exception as e:
         print("Zip download error:", e)
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Failed to generate zip: {e}") 
+        raise HTTPException(status_code=500, detail=f"Failed to generate zip: {e}")
+
+@app.post("/create-test-session/")
+async def create_test_session():
+    """
+    Create a test hiring session for debugging purposes
+    """
+    try:
+        test_session_data = {
+            'title': 'Test Machine Learning Engineer Position',
+            'role': 'ML Engineer',
+            'recruiter_id': 'test-recruiter-123',
+            'description': 'Test position for machine learning engineer with Python experience',
+            'target_hires': 1,
+            'current_hires': 0,
+            'status': 'active'
+        }
+        
+        response = supabase.table('hiring_sessions').insert(test_session_data).execute()
+        
+        if response.data and len(response.data) > 0:
+            session_id = response.data[0]['id']
+            print(f"✅ Created test session: {session_id}")
+            
+            return JSONResponse({
+                "status": "success",
+                "session_id": session_id,
+                "session_data": response.data[0],
+                "message": "Test hiring session created successfully"
+            })
+        else:
+            print("❌ Failed to create test session")
+            return JSONResponse({
+                "status": "error", 
+                "message": "Failed to create test session"
+            }, status_code=500)
+            
+    except Exception as e:
+        print(f"❌ Error creating test session: {e}")
+        traceback.print_exc()
+        return JSONResponse({
+            "status": "error", 
+            "message": f"Failed to create test session: {str(e)}"
+        }, status_code=500)
+
+@app.post("/process-hiring-session/")
+async def process_hiring_session(
+    session_id: str = Form(...),
+    description: str = Form(...)
+):
+    """
+    Process a hiring session description to extract required skills, 
+    eligibility criteria, and eligible years, then update the database.
+    Checks for existing criteria to avoid re-extraction.
+    """
+    print(f"Processing hiring session: {session_id}")
+    print(f"Description length: {len(description)} characters")
+    
+    try:
+        # First, check if the session exists and get current criteria
+        session_check = supabase.table('hiring_sessions').select(
+            "id, title, recruiter_id, requirements, eligibility_criteria"
+        ).eq('id', session_id).execute()
+        
+        if not session_check.data:
+            print(f"❌ Session {session_id} not found in database")
+            
+            # Let's also check what sessions do exist for debugging
+            all_sessions = supabase.table('hiring_sessions').select("id, title").execute()
+            print(f"📊 Available sessions in database: {len(all_sessions.data if all_sessions.data else 0)}")
+            if all_sessions.data:
+                for session in all_sessions.data[:3]:  # Show first 3 sessions
+                    print(f"   - {session['id']}: {session['title']}")
+            
+            return JSONResponse({
+                "status": "error", 
+                "message": f"Hiring session {session_id} not found in database",
+                "debug_info": {
+                    "total_sessions": len(all_sessions.data if all_sessions.data else 0),
+                    "session_exists": False
+                }
+            }, status_code=404)
+        
+        session_data = session_check.data[0]
+        print(f"✅ Found session: {session_data['title']}")
+        
+        # Check if criteria already exists and is meaningful
+        existing_requirements = session_data.get('requirements', {})
+        existing_eligibility = session_data.get('eligibility_criteria', {})
+        
+        has_skills = existing_requirements.get('required_skills') and len(existing_requirements['required_skills']) > 0
+        has_criteria = (existing_eligibility.get('education') and len(existing_eligibility['education']) > 0) or \
+                      existing_eligibility.get('experience_years', 0) > 0 or \
+                      existing_eligibility.get('cgpa_minimum', 0) > 0
+        has_eligible_years = existing_eligibility.get('eligible_years') and len(existing_eligibility['eligible_years']) > 0
+        
+        if has_skills and (has_criteria or has_eligible_years):
+            print(f"✅ Session {session_id} already has extracted criteria, returning existing data")
+            
+            return JSONResponse({
+                "status": "success",
+                "session_id": session_id,
+                "extracted_data": {
+                    "required_skills": existing_requirements.get('required_skills', []),
+                    "eligibility_criteria": {
+                        "education": existing_eligibility.get('education', []),
+                        "experience_years": existing_eligibility.get('experience_years', 0),
+                        "cgpa_minimum": existing_eligibility.get('cgpa_minimum', 0.0),
+                        "specific_requirements": existing_eligibility.get('specific_requirements', [])
+                    },
+                    "eligible_years": existing_eligibility.get('eligible_years', [])
+                },
+                "message": "Existing criteria found, no re-extraction needed"
+            })
+        
+        print(f"📝 Session {session_id} has incomplete criteria, extracting from description")
+        
+        # Extract information from description
+        extracted_info = extract_job_info_from_description(description)
+        
+        print(f"Extracted skills: {extracted_info['required_skills']}")
+        print(f"Extracted eligibility criteria: {extracted_info['eligibility_criteria']}")
+        print(f"Extracted eligible years: {extracted_info['eligible_years']}")
+        
+        # Prepare update data for the hiring_sessions table
+        update_data = {
+            'requirements': {
+                'required_skills': extracted_info['required_skills']
+            },
+            'eligibility_criteria': {
+                **extracted_info['eligibility_criteria'],
+                'eligible_years': extracted_info['eligible_years']
+            }
+        }
+        
+        # Update the hiring session in Supabase
+        response = supabase.table('hiring_sessions').update(update_data).eq('id', session_id).execute()
+        
+        if response.data and len(response.data) > 0:
+            print(f"✅ Successfully updated hiring session {session_id}")
+            
+            return JSONResponse({
+                "status": "success",
+                "session_id": session_id,
+                "extracted_data": {
+                    "required_skills": extracted_info['required_skills'],
+                    "eligibility_criteria": extracted_info['eligibility_criteria'],
+                    "eligible_years": extracted_info['eligible_years']
+                },
+                "message": "Hiring session updated successfully with extracted information"
+            })
+        else:
+            print(f"❌ Failed to update hiring session {session_id} - update returned no data")
+            return JSONResponse({
+                "status": "error", 
+                "message": f"Failed to update hiring session {session_id} - database update failed",
+                "debug_info": {
+                    "session_exists": True,
+                    "update_response": response.data
+                }
+            }, status_code=500)
+            
+    except Exception as e:
+        print(f"❌ Error processing hiring session: {e}")
+        traceback.print_exc()
+        return JSONResponse({
+            "status": "error", 
+            "message": f"Failed to process hiring session: {str(e)}"
+        }, status_code=500)
+
+@app.get("/test-job-extraction/")
+async def test_job_extraction():
+    """
+    Test endpoint to verify job information extraction functionality
+    """
+    sample_description = """
+    We are looking for a Full Stack Developer with 2+ years of experience in React, Node.js, and Python.
+    The candidate should have a B.Tech in Computer Science with minimum CGPA of 7.5.
+    Experience with AWS, Docker, and MongoDB is preferred.
+    Final year students and fresh graduates are welcome to apply.
+    Must have knowledge of Git and agile development practices.
+    """
+    
+    try:
+        extracted_info = extract_job_info_from_description(sample_description)
+        
+        return JSONResponse({
+            "status": "success",
+            "sample_description": sample_description,
+            "extracted_data": {
+                "required_skills": extracted_info['required_skills'],
+                "eligibility_criteria": extracted_info['eligibility_criteria'],
+                "eligible_years": extracted_info['eligible_years']
+            }
+        })
+        
+    except Exception as e:
+        return JSONResponse({
+            "status": "error",
+            "message": f"Extraction test failed: {str(e)}"
+        }, status_code=500)
+
+@app.post("/extract-job-info/")
+async def extract_job_info(request: Request):
+    """
+    Extract job information from a provided job description.
+    If session_id is provided, checks if criteria already exists to avoid re-extraction.
+    """
+    try:
+        data = await request.json()
+        job_description = data.get("job_description", "")
+        session_id = data.get("session_id", None)  # Optional session ID
+        
+        if not job_description or not job_description.strip():
+            return JSONResponse({
+                "status": "error",
+                "message": "Job description is required"
+            }, status_code=400)
+        
+        # Check if session_id is provided and criteria already exists
+        if session_id:
+            try:
+                session_check = supabase.table('hiring_sessions').select(
+                    "id, requirements, eligibility_criteria"
+                ).eq('id', session_id).execute()
+                
+                if session_check.data and len(session_check.data) > 0:
+                    session_data = session_check.data[0]
+                    requirements = session_data.get('requirements', {})
+                    eligibility_criteria = session_data.get('eligibility_criteria', {})
+                    
+                    # Check if both requirements and eligibility_criteria have meaningful data
+                    has_skills = requirements.get('required_skills') and len(requirements['required_skills']) > 0
+                    has_criteria = (eligibility_criteria.get('education') and len(eligibility_criteria['education']) > 0) or \
+                                 eligibility_criteria.get('experience_years', 0) > 0 or \
+                                 eligibility_criteria.get('cgpa_minimum', 0) > 0
+                    has_eligible_years = eligibility_criteria.get('eligible_years') and len(eligibility_criteria['eligible_years']) > 0
+                    
+                    if has_skills and (has_criteria or has_eligible_years):
+                        print(f"✅ Session {session_id} already has extracted criteria, returning existing data")
+                        
+                        return JSONResponse({
+                            "status": "success",
+                            "extracted_data": {
+                                "required_skills": requirements.get('required_skills', []),
+                                "eligibility_criteria": {
+                                    "education": eligibility_criteria.get('education', []),
+                                    "experience_years": eligibility_criteria.get('experience_years', 0),
+                                    "cgpa_minimum": eligibility_criteria.get('cgpa_minimum', 0.0),
+                                    "specific_requirements": eligibility_criteria.get('specific_requirements', [])
+                                },
+                                "eligible_years": eligibility_criteria.get('eligible_years', [])
+                            },
+                            "message": "Existing criteria found, no re-extraction needed"
+                        })
+                    else:
+                        print(f"📝 Session {session_id} exists but has incomplete criteria, will extract")
+                else:
+                    print(f"⚠️ Session {session_id} not found, proceeding with extraction")
+                    
+            except Exception as session_error:
+                print(f"Error checking session {session_id}: {session_error}")
+                # Continue with extraction if session check fails
+        
+        print(f"Extracting info from job description: {len(job_description)} characters")
+        
+        # Extract information using our existing function
+        extracted_info = extract_job_info_from_description(job_description)
+        
+        return JSONResponse({
+            "status": "success",
+            "extracted_data": {
+                "required_skills": extracted_info['required_skills'],
+                "eligibility_criteria": extracted_info['eligibility_criteria'],
+                "eligible_years": extracted_info['eligible_years']
+            },
+            "message": "Job information extracted successfully"
+        })
+        
+    except Exception as e:
+        print(f"Job extraction error: {e}")
+        traceback.print_exc()
+        return JSONResponse({
+            "status": "error", 
+            "message": f"Failed to extract job information: {str(e)}"
+        }, status_code=500) 
