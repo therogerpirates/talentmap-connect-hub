@@ -11,6 +11,7 @@ import { useCreateHiringSession } from '@/hooks/useHiringSessions';
 import { Layout } from '@/components/Layout';
 import { JobExtractor } from '@/components/JobExtractor';
 import { FileText, Brain, ArrowLeft } from 'lucide-react';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface ExtractedJobInfo {
   required_skills: string[];
@@ -91,7 +92,12 @@ export default function CreateSession() {
 
   return (
     <Layout>
-      <div className="container mx-auto py-8">
+      <div className="container mx-auto py-8 relative">
+        {/* Theme Toggle - Top Right */}
+        <div className="absolute top-4 right-4 z-50">
+          <ThemeToggle />
+        </div>
+        
         {/* Header */}
         <div className="mb-8">
           <Button 

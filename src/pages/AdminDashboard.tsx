@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BookOpen, LogOut, Plus, Sparkles, Users, Calendar, Search, Menu } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { useHiringSessions } from '@/hooks/useHiringSessions';
 import { useAddCandidateToSession } from '@/hooks/useSessionCandidates';
 import { DashboardStats } from '@/components/DashboardStats';
@@ -114,6 +115,7 @@ const AdminDashboard = () => {
             </Link>
             
             <div className="flex items-center space-x-4">
+              <ThemeToggle />
               <div className="hidden md:flex items-center space-x-3 px-4 py-2 bg-muted/50 rounded-lg">
                 <div className="w-8 h-8 gradient-primary rounded-full flex items-center justify-center text-white text-sm font-medium">
                   {fullName?.split(' ').map(n => n[0]).join('') || profile?.full_name?.split(' ').map(n => n[0]).join('') || 'R'}

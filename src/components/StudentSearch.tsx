@@ -90,7 +90,7 @@ export const StudentSearch = ({ onAddToSession, selectedSessionId }: StudentSear
   return (
     <div className="space-y-8">
       {/* Search Form */}
-      <Card className="glass-panel border-0 shadow-glass relative overflow-hidden">
+      <Card className="glass-panel border-0 shadow-glass relative overflow-hidden sticky top-4 z-50">
         <div className="absolute inset-0 gradient-glass opacity-30"></div>
         <CardHeader className="relative z-10">
           <CardTitle className="flex items-center justify-between">
@@ -171,7 +171,7 @@ export const StudentSearch = ({ onAddToSession, selectedSessionId }: StudentSear
               <Button 
                 type="submit" 
                 disabled={isSearching}
-                className="w-full gradient-primary text-white border-0 shadow-glow hover:scale-105 transition-all duration-300 py-4 text-lg font-semibold"
+                className="w-full gradient-primary text-white border-0 shadow-glow hover:scale-80 transition-all duration-300 py-4 text-lg font-semibold"
               >
                 {isSearching ? (
                   <>

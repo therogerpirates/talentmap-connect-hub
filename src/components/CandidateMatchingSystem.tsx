@@ -474,142 +474,150 @@ export default function CandidateMatchingSystem({
           </Card>
 
           {/* Candidates List */}
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {sortedCandidates.map((candidate) => (
-              <Card key={candidate.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start space-x-4">
-                      {/* Selection Checkbox */}
-                      <input
-                        type="checkbox"
-                        checked={selectedCandidates.includes(candidate.id)}
-                        onChange={() => handleCandidateSelection(candidate.id)}
-                        className="mt-1"
-                      />
+              <Card key={candidate.id} className="hover:shadow-md transition-shadow relative">
+                {/* Selection Checkbox - Top Right */}
+                <div className="absolute top-3 right-3 z-10">
+                  <input
+                    type="checkbox"
+                    checked={selectedCandidates.includes(candidate.id)}
+                    onChange={() => handleCandidateSelection(candidate.id)}
+                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                </div>
 
-                      {/* Candidate Info */}
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-lg font-semibold">
+                <CardContent className="p-6">
+                  {/* Profile Section */}
+                  <div className="flex items-center space-x-4 mb-4">
+                    {/* Avatar */}
+                    <div className="w-16 h-16 gradient-primary rounded-full flex items-center justify-center text-white font-bold text-lg shadow-glow">
+                      {candidate.student?.profile?.full_name?.split(' ').map(n => n[0]).join('') || 'U'}
+                    </div>
+                    
+                    {/* Name and Match Score */}
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-lg font-semibold text-foreground">
                             {candidate.student?.profile?.full_name || 'Unknown'}
                           </h3>
-                          <Badge variant={getStatusBadgeVariant(candidate.status)}>
-                            {getStatusIcon(candidate.status)}
-                            <span className="ml-1 capitalize">{candidate.status}</span>
+                          <p className="text-sm text-muted-foreground">
+                            Year {candidate.student?.year || 'N/A'} • {candidate.student?.department || 'N/A'}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <div className={`text-xl font-bold ${getMatchScoreColor(candidate.match_score)}`}>
+                            {candidate.match_score}%
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {getMatchScoreLabel(candidate.match_score)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Status Badge */}
+                  <div className="mb-4">
+                    <Badge variant={getStatusBadgeVariant(candidate.status)} className="text-sm">
+                      {getStatusIcon(candidate.status)}
+                      <span className="ml-1 capitalize">{candidate.status}</span>
+                    </Badge>
+                  </div>
+
+                  {/* Key Info Grid */}
+                  <div className="grid grid-cols-2 gap-3 text-sm text-muted-foreground mb-4">
+                    <div className="flex items-center space-x-2">
+                      <Award className="w-4 h-4 text-primary" />
+                      <span>GPA: {candidate.student?.gpa || 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Briefcase className="w-4 h-4 text-primary" />
+                      <span>Internship: Available</span>
+                    </div>
+                  </div>
+
+                  {/* Skills Tags */}
+                  {candidate.student?.skills && candidate.student.skills.length > 0 && (
+                    <div className="mb-4">
+                      <div className="flex flex-wrap gap-1">
+                        {candidate.student.skills.slice(0, 6).map((skill, index) => (
+                          <Badge key={index} variant="secondary" className="text-xs px-2 py-1">
+                            {skill}
                           </Badge>
-                        </div>
-
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-muted-foreground mb-3">
-                          <div>
-                            <Calendar className="w-4 h-4 inline mr-1" />
-                            Year {candidate.student?.year || 'N/A'}
-                          </div>
-                          <div>
-                            <GraduationCap className="w-4 h-4 inline mr-1" />
-                            {candidate.student?.department || 'N/A'}
-                          </div>
-                          <div>
-                            <Award className="w-4 h-4 inline mr-1" />
-                            GPA: {candidate.student?.gpa || 'N/A'}
-                          </div>
-                          <div>
-                            <Briefcase className="w-4 h-4 inline mr-1" />
-                            Internship: Available in profile
-                          </div>
-                        </div>
-
-                        {/* Skills */}
-                        {candidate.student?.skills && candidate.student.skills.length > 0 && (
-                          <div className="mb-3">
-                            <p className="text-sm font-medium mb-1">Skills:</p>
-                            <div className="flex flex-wrap gap-1">
-                              {candidate.student.skills.slice(0, 8).map((skill, index) => (
-                                <Badge key={index} variant="secondary" className="text-xs">
-                                  {skill}
-                                </Badge>
-                              ))}
-                              {candidate.student.skills.length > 8 && (
-                                <Badge variant="outline" className="text-xs">
-                                  +{candidate.student.skills.length - 8} more
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Notes */}
-                        {candidate.recruiter_notes && (
-                          <div className="mb-3">
-                            <p className="text-sm font-medium mb-1">Notes:</p>
-                            <p className="text-sm text-muted-foreground bg-muted p-2 rounded">
-                              {candidate.recruiter_notes}
-                            </p>
-                          </div>
+                        ))}
+                        {candidate.student.skills.length > 6 && (
+                          <Badge variant="outline" className="text-xs px-2 py-1">
+                            +{candidate.student.skills.length - 6} more
+                          </Badge>
                         )}
                       </div>
                     </div>
+                  )}
 
-                    {/* Match Score and Actions */}
-                    <div className="text-right space-y-3">
-                      <div>
-                        <div className={`text-2xl font-bold ${getMatchScoreColor(candidate.match_score)}`}>
-                          {candidate.match_score}%
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {getMatchScoreLabel(candidate.match_score)}
-                        </div>
-                        <Progress 
-                          value={candidate.match_score} 
-                          className="w-24 h-2 mt-1"
-                        />
-                      </div>
+                  {/* Notes */}
+                  {candidate.recruiter_notes && (
+                    <div className="mb-4">
+                      <p className="text-xs text-muted-foreground bg-muted p-2 rounded">
+                        {candidate.recruiter_notes}
+                      </p>
+                    </div>
+                  )}
 
-                      <div className="flex flex-col space-y-2">
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => fetchDetailedAnalysis(candidate.student_id)}
-                            >
-                              <Eye className="w-4 h-4 mr-1" />
-                              Analyze
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                            <DialogHeader>
-                              <DialogTitle>
-                                Detailed Match Analysis - {candidate.student?.profile?.full_name}
-                              </DialogTitle>
-                            </DialogHeader>
-                            {isLoadingAnalysis ? (
-                              <div className="flex items-center justify-center p-8">
-                                <RefreshCw className="w-6 h-6 animate-spin mr-2" />
-                                Loading detailed analysis...
-                              </div>
-                            ) : detailedAnalysis && (
-                              <DetailedAnalysisView analysis={detailedAnalysis} />
-                            )}
-                          </DialogContent>
-                        </Dialog>
+                  {/* Progress Bar */}
+                  <div className="mb-4">
+                    <Progress 
+                      value={candidate.match_score} 
+                      className="w-full h-2"
+                    />
+                  </div>
 
-                        <Select 
-                          value={candidate.status} 
-                          onValueChange={(value) => onStatusUpdate(candidate.id, value)}
+                  {/* Action Buttons */}
+                  <div className="flex items-center space-x-2">
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => fetchDetailedAnalysis(candidate.student_id)}
+                          className="flex-1"
                         >
-                          <SelectTrigger className="w-32">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="shortlisted">Shortlisted</SelectItem>
-                            <SelectItem value="waitlisted">Waitlisted</SelectItem>
-                            <SelectItem value="hired">Hired</SelectItem>
-                            <SelectItem value="rejected">Rejected</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
+                          <Eye className="w-4 h-4 mr-1" />
+                          Analyze
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                        <DialogHeader>
+                          <DialogTitle>
+                            Detailed Match Analysis - {candidate.student?.profile?.full_name}
+                          </DialogTitle>
+                        </DialogHeader>
+                        {isLoadingAnalysis ? (
+                          <div className="flex items-center justify-center p-8">
+                            <RefreshCw className="w-6 h-6 animate-spin mr-2" />
+                            Loading detailed analysis...
+                          </div>
+                        ) : detailedAnalysis && (
+                          <DetailedAnalysisView analysis={detailedAnalysis} />
+                        )}
+                      </DialogContent>
+                    </Dialog>
+
+                    <Select 
+                      value={candidate.status} 
+                      onValueChange={(value) => onStatusUpdate(candidate.id, value)}
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="shortlisted">Shortlisted</SelectItem>
+                        <SelectItem value="waitlisted">Waitlisted</SelectItem>
+                        <SelectItem value="hired">Hired</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </CardContent>
               </Card>

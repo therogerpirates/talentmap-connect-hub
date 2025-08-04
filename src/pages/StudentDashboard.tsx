@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { BookOpen, Upload, User, FileText, CheckCircle, LogOut, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import ResumeUpload from '@/components/ResumeUpload';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudentData, useUpdateStudentData } from '@/hooks/useStudentData';
 import GaugeChart from 'react-gauge-chart';
@@ -172,6 +173,7 @@ const StudentDashboard = () => {
             </Link>
           
           <div className="flex items-center space-x-4">
+            <ThemeToggle />
             <div className="hidden md:flex items-center space-x-4">
               <Link to="/resume-scanner">
                 <Button variant="ghost" size="sm" className="text-gray-900 dark:text-white hover:text-gray-800 dark:hover:text-gray-200 transition-colors duration-300">
@@ -199,9 +201,9 @@ const StudentDashboard = () => {
           <div className="mb-12 relative overflow-hidden fade-in-up">
             <div className="glass-panel p-10 text-center relative overflow-hidden">
               <div className="absolute inset-0 gradient-glass opacity-50"></div>
-              <div className="relative z-10">
-                <div className="flex items-center justify-center space-x-3 mb-4">
-                  <h1 className="text-5xl md:text-6xl font-bold gradient-primary bg-clip-text text-transparent tracking-tight">
+                <div className="relative z-10">
+                  <div className="flex items-center justify-center space-x-3 mb-4">
+                    <h1 className="text-5xl md:text-6xl font-bold gradient-primary bg-clip-text text-transparent tracking-tight">
                     Student DashBoard
                   </h1>
                 </div>

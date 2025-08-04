@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useStudentData, useUpdateStudentData } from '@/hooks/useStudentData';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -75,8 +76,13 @@ const ProfilePage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4 transition-colors duration-300 relative">
+      {/* Theme Toggle - Top Right */}
+      <div className="absolute top-4 right-4 z-50">
+        <ThemeToggle />
+      </div>
+      
+      <Card className="w-full max-w-md bg-white dark:bg-gray-800 transition-colors duration-300">
         <CardHeader>
           <CardTitle>Edit Profile Information</CardTitle>
           <CardDescription>Update your academic year and department.</CardDescription>
