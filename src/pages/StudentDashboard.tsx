@@ -215,23 +215,23 @@ const StudentDashboard = () => {
           </div>
             
             {/* Navigation Cards */}
-            <div className="grid md:grid-cols-2 gap-6 mt-8">
+            <div className="grid md:grid-cols-3 gap-6 mt-8">
               <Link to="/resume-scanner">
-              <Card className="bg-white dark:bg-gray-800 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer">
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center transition-colors duration-300">
-                      <FileText className="w-6 h-6 text-blue-600 dark:text-blue-300 transition-colors duration-300" />
+                <Card className="bg-white dark:bg-gray-800 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer">
+                  <CardContent className="p-6">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center transition-colors duration-300">
+                        <FileText className="w-6 h-6 text-blue-600 dark:text-blue-300 transition-colors duration-300" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white transition-colors duration-300">Resume Scanner</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-300 transition-colors duration-300">Upload and analyze your resume with AI</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white transition-colors duration-300">Resume Scanner</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-300 transition-colors duration-300">Upload and analyze your resume with AI</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
               </Link>
-              
+
               <Link to="/student-details">
                 <Card className="bg-white dark:bg-gray-800 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer">
                   <CardContent className="p-6">
@@ -242,6 +242,22 @@ const StudentDashboard = () => {
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white transition-colors duration-300">Student Details</h3>
                         <p className="text-sm text-gray-600 dark:text-gray-300 transition-colors duration-300">Manage your profile and information</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+
+              <Link to="/resume-builder">
+                <Card className="bg-white dark:bg-gray-800 transition-all duration-300 hover:shadow-lg hover:scale-105 cursor-pointer">
+                  <CardContent className="p-6">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900 rounded-lg flex items-center justify-center transition-colors duration-300">
+                        <FileText className="w-6 h-6 text-indigo-600 dark:text-indigo-300 transition-colors duration-300" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white transition-colors duration-300">Resume Builder</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-300 transition-colors duration-300">Create and download your resume</p>
                       </div>
                     </div>
                   </CardContent>

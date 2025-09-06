@@ -20,6 +20,7 @@ import ProfilePage from './pages/ProfilePage';
 import AdminStudentDetail from './pages/AdminStudentDetail';
 import CreateSession from './pages/CreateSession';
 import SessionDetail from './pages/SessionDetail';
+import ResumeBuilder from './pages/ResumeBuilder';
 
 const queryClient = new QueryClient();
 
@@ -91,6 +92,14 @@ const App = () => (
                 element={
                   <ProtectedRoute role="admin">
                     <SessionDetail />
+                  </ProtectedRoute>
+                }
+              />
+              <Route 
+                path="/resume-builder" 
+                element={
+                  <ProtectedRoute role="student">
+                    <ResumeBuilder />
                   </ProtectedRoute>
                 }
               />
