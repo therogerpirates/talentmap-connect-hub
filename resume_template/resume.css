@@ -1,0 +1,236 @@
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f0f0f0;
+    padding: 20px;
+}
+
+.resume-container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.header {
+    background: linear-gradient(135deg, #5a6c7d, #7a8a9a);
+    height: 40px;
+}
+
+.main-content {
+    padding: 30px;
+}
+
+.profile-section {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 30px;
+    gap: 30px;
+}
+
+.profile-image {
+    width: 120px;
+    height: 120px;
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.profile-icon {
+    width: 60px;
+    height: 60px;
+    border: 3px solid #666;
+    border-radius: 50%;
+    position: relative;
+    background: white;
+}
+
+.profile-icon::before {
+    content: '';
+    position: absolute;
+    top: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 20px;
+    height: 20px;
+    border: 3px solid #666;
+    border-radius: 50%;
+    background: white;
+}
+
+.profile-icon::after {
+    content: '';
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 35px;
+    height: 20px;
+    border: 3px solid #666;
+    border-radius: 35px 35px 0 0;
+    border-bottom: none;
+    background: white;
+}
+
+.profile-info {
+    flex: 1;
+}
+
+.name {
+    font-size: 32px;
+    font-weight: bold;
+    color: #5a6c7d;
+    margin-bottom: 15px;
+    letter-spacing: 2px;
+}
+
+.contact-info {
+    list-style: none;
+}
+
+.contact-info li {
+    margin-bottom: 8px;
+    color: #666;
+    font-size: 14px;
+}
+
+.contact-info li::before {
+    content: '📍';
+    margin-right: 8px;
+}
+
+.contact-info li:nth-child(2)::before {
+    content: '📞';
+}
+
+.contact-info li:nth-child(3)::before {
+    content: '✉️';
+}
+
+.section {
+    margin-bottom: 25px;
+}
+
+.section-title {
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: #333;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 2px solid #5a6c7d;
+    letter-spacing: 1px;
+}
+
+.summary-text {
+    color: #666;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.skills-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.skills-column {
+    list-style: none;
+}
+
+.skills-column li {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.skills-column li::before {
+    content: '•';
+    color: #5a6c7d;
+    margin-right: 8px;
+}
+
+.education-item {
+    margin-bottom: 15px;
+}
+
+.education-institution {
+    font-weight: bold;
+    color: #333;
+    font-size: 14px;
+}
+
+.education-degree {
+    color: #666;
+    font-size: 14px;
+    margin-top: 2px;
+}
+
+.cert-item, .accomplishment-item, .activity-item {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.cert-item::before, .accomplishment-item::before, .activity-item::before {
+    content: '•';
+    color: #5a6c7d;
+    margin-right: 8px;
+}
+
+.languages-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.language-item {
+    margin-bottom: 15px;
+}
+
+.language-name {
+    font-weight: bold;
+    color: #333;
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.language-level {
+    background: #f0f0f0;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #666;
+    display: inline-block;
+}
+
+.proficiency-bar {
+    width: 100%;
+    height: 8px;
+    background: #e0e0e0;
+    border-radius: 4px;
+    margin-top: 5px;
+    overflow: hidden;
+}
+
+.proficiency-fill {
+    height: 100%;
+    background: #5a6c7d;
+    border-radius: 4px;
+}
+
+.proficiency-b1 { width: 70%; }
+.proficiency-a1 { width: 40%; }

@@ -29,100 +29,152 @@ const pdfStyles = StyleSheet.create({
     padding: 40,
     fontFamily: 'Helvetica',
     fontSize: 12,
-    color: '#222',
+    color: '#333',
+  },
+  header: {
+    backgroundColor: '#5a6c7d',
+    height: 30,
+    marginBottom: 20,
   },
   section: {
     marginBottom: 16,
   },
-  heading: {
-    fontSize: 18,
+  name: {
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#3b82f6',
-    marginBottom: 8,
+    color: '#5a6c7d',
+    marginBottom: 12,
+    letterSpacing: 1,
   },
-  subheading: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#6366f1',
+  contactInfo: {
+    fontSize: 10,
+    color: '#666',
     marginBottom: 4,
+  },
+  sectionTitle: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    color: '#333',
+    marginBottom: 8,
+    paddingBottom: 3,
+    borderBottom: '2 solid #5a6c7d',
+    letterSpacing: 0.5,
   },
   text: {
-    marginBottom: 4,
-  },
-  skill: {
-    backgroundColor: '#e0e7ff',
-    color: '#3730a3',
-    borderRadius: 6,
-    padding: 2,
-    marginRight: 4,
     fontSize: 10,
+    color: '#666',
+    marginBottom: 4,
+    lineHeight: 1.4,
+  },
+  bulletPoint: {
+    fontSize: 10,
+    color: '#666',
+    marginBottom: 3,
   },
 });
 
 const ResumePDF = ({ resume }: { resume: typeof initialResumeData }) => (
   <Document>
     <Page size="A4" style={pdfStyles.page}>
+      {/* Header */}
+      <View style={pdfStyles.header}></View>
+      
+      {/* Name and Contact */}
       <View style={pdfStyles.section}>
-        <Text style={pdfStyles.heading}>{resume.personal.fullName || 'Your Name'}</Text>
-        <Text style={pdfStyles.text}>Email: {resume.personal.email}</Text>
-        <Text style={pdfStyles.text}>Phone: {resume.personal.phone}</Text>
-        <Text style={pdfStyles.text}>LinkedIn: {resume.personal.linkedin}</Text>
-        <Text style={pdfStyles.text}>GitHub: {resume.personal.github}</Text>
-        <Text style={pdfStyles.text}>Address: {resume.personal.address}</Text>
+        <Text style={pdfStyles.name}>{resume.personal.fullName || 'YOUR NAME'}</Text>
+        <Text style={pdfStyles.contactInfo}>📍 {resume.personal.address || 'Your Location'}</Text>
+        <Text style={pdfStyles.contactInfo}>📞 {resume.personal.phone || 'Your Phone'}</Text>
+        <Text style={pdfStyles.contactInfo}>✉️ {resume.personal.email || 'Your Email'}</Text>
+        {resume.personal.linkedin && (
+          <Text style={pdfStyles.contactInfo}>💼 {resume.personal.linkedin}</Text>
+        )}
+        {resume.personal.github && (
+          <Text style={pdfStyles.contactInfo}>🔗 {resume.personal.github}</Text>
+        )}
       </View>
+
+      {/* Summary */}
       {resume.summary && (
         <View style={pdfStyles.section}>
-          <Text style={pdfStyles.subheading}>Professional Summary</Text>
+          <Text style={pdfStyles.sectionTitle}>SUMMARY</Text>
           <Text style={pdfStyles.text}>{resume.summary}</Text>
         </View>
       )}
-      {resume.education.filter(e => e.degree).length > 0 && (
-        <View style={pdfStyles.section}>
-          <Text style={pdfStyles.subheading}>Education</Text>
-          {resume.education.filter(e => e.degree).map((edu, idx) => (
-            <Text key={idx} style={pdfStyles.text}>{edu.degree} in {edu.department} - {edu.institution} ({edu.year}) CGPA: {edu.cgpa}</Text>
-          ))}
-        </View>
-      )}
+
+      {/* Skills */}
       {resume.skills.filter(s => s).length > 0 && (
         <View style={pdfStyles.section}>
-          <Text style={pdfStyles.subheading}>Skills</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 4 }}>
-            {resume.skills.filter(s => s).map((skill, idx) => (
-              <Text key={idx} style={pdfStyles.skill}>{skill}</Text>
-            ))}
-          </View>
+          <Text style={pdfStyles.sectionTitle}>SKILLS</Text>
+          {resume.skills.filter(s => s).map((skill, idx) => (
+            <Text key={idx} style={pdfStyles.bulletPoint}>• {skill}</Text>
+          ))}
         </View>
       )}
+
+      {/* Experience */}
       {resume.experience.filter(e => e.jobTitle).length > 0 && (
         <View style={pdfStyles.section}>
-          <Text style={pdfStyles.subheading}>Experience</Text>
+          <Text style={pdfStyles.sectionTitle}>EXPERIENCE</Text>
           {resume.experience.filter(e => e.jobTitle).map((exp, idx) => (
-            <Text key={idx} style={pdfStyles.text}>{exp.jobTitle} at {exp.company} ({exp.duration}): {exp.description}</Text>
+            <View key={idx} style={{ marginBottom: 8 }}>
+              <Text style={{ ...pdfStyles.text, fontWeight: 'bold' }}>
+                {exp.jobTitle} at {exp.company}
+              </Text>
+              <Text style={pdfStyles.text}>{exp.duration}</Text>
+              <Text style={pdfStyles.text}>{exp.description}</Text>
+            </View>
           ))}
         </View>
       )}
+
+      {/* Education */}
+      {resume.education.filter(e => e.degree).length > 0 && (
+        <View style={pdfStyles.section}>
+          <Text style={pdfStyles.sectionTitle}>EDUCATION AND TRAINING</Text>
+          {resume.education.filter(e => e.degree).map((edu, idx) => (
+            <View key={idx} style={{ marginBottom: 8 }}>
+              <Text style={{ ...pdfStyles.text, fontWeight: 'bold' }}>
+                {edu.institution}, {edu.year && `Expected in ${edu.year}`}
+              </Text>
+              <Text style={pdfStyles.text}>
+                {edu.degree}: {edu.department} {edu.cgpa && `(CGPA: ${edu.cgpa})`}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Projects */}
       {resume.projects.filter(p => p.title).length > 0 && (
         <View style={pdfStyles.section}>
-          <Text style={pdfStyles.subheading}>Projects</Text>
+          <Text style={pdfStyles.sectionTitle}>PROJECTS</Text>
           {resume.projects.filter(p => p.title).map((proj, idx) => (
-            <Text key={idx} style={pdfStyles.text}>{proj.title}: {proj.description} [{proj.technologies}] {proj.link ? proj.link : ''}</Text>
+            <Text key={idx} style={pdfStyles.bulletPoint}>
+              • {proj.title}: {proj.description} [{proj.technologies}]
+            </Text>
           ))}
         </View>
       )}
+
+      {/* Certifications */}
       {resume.achievements.filter(a => a.title).length > 0 && (
         <View style={pdfStyles.section}>
-          <Text style={pdfStyles.subheading}>Achievements / Certifications</Text>
-          {resume.achievements.filter(a => a.title).map((ach, idx) => (
-            <Text key={idx} style={pdfStyles.text}>{ach.title} ({ach.date}): {ach.description}</Text>
+          <Text style={pdfStyles.sectionTitle}>CERTIFICATIONS</Text>
+          {resume.achievements.filter(a => a.title).map((cert, idx) => (
+            <Text key={idx} style={pdfStyles.bulletPoint}>• {cert.title} ({cert.date})</Text>
           ))}
         </View>
       )}
+
+      {/* Activities and Honors */}
       {resume.extracurricular.filter(e => e.role).length > 0 && (
         <View style={pdfStyles.section}>
-          <Text style={pdfStyles.subheading}>Extra-curricular / Volunteer</Text>
-          {resume.extracurricular.filter(e => e.role).map((ex, idx) => (
-            <Text key={idx} style={pdfStyles.text}>{ex.role} at {ex.organization} ({ex.duration}): {ex.description}</Text>
+          <Text style={pdfStyles.sectionTitle}>ACTIVITIES AND HONORS</Text>
+          {resume.extracurricular.filter(e => e.role).map((activity, idx) => (
+            <Text key={idx} style={pdfStyles.bulletPoint}>
+              • {activity.role} at {activity.organization} ({activity.duration})
+            </Text>
           ))}
         </View>
       )}
@@ -145,11 +197,23 @@ const ResumeBuilder: React.FC = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('students')
-        .select('resume_form_data')
+        .select('education, experience, projects, skills')
         .eq('id', profile.id)
         .single();
-      if (data && data.resume_form_data) {
-        setResume(data.resume_form_data);
+      
+      if (data && !error) {
+        // Map existing data back to form structure with type checking
+        const mappedResume = {
+          ...resume,
+          education: (Array.isArray(data.education) && data.education.every(e => typeof e === 'object' && e !== null)) 
+            ? data.education as typeof resume.education : resume.education,
+          experience: (Array.isArray(data.experience) && data.experience.every(e => typeof e === 'object' && e !== null)) 
+            ? data.experience as typeof resume.experience : resume.experience,
+          projects: (Array.isArray(data.projects) && data.projects.every(p => typeof p === 'object' && p !== null)) 
+            ? data.projects as typeof resume.projects : resume.projects,
+          skills: Array.isArray(data.skills) ? data.skills as string[] : resume.skills
+        };
+        setResume(mappedResume);
       }
       setLoading(false);
     };
@@ -261,204 +325,382 @@ const ResumeBuilder: React.FC = () => {
     setResume({ ...resume, extracurricular: updated });
   };
 
-  // PDF generation handler
-  const handleDownloadPDF = () => {
-    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-    let y = 40;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(22);
-    doc.text(resume.personal.fullName || 'Your Name', 40, y);
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'normal');
-    y += 24;
-    doc.text(`Email: ${resume.personal.email || ''}`, 40, y);
-    y += 16;
-    doc.text(`Phone: ${resume.personal.phone || ''}`, 40, y);
-    y += 16;
-    doc.text(`LinkedIn: ${resume.personal.linkedin || ''}`, 40, y);
-    y += 16;
-    doc.text(`GitHub: ${resume.personal.github || ''}`, 40, y);
-    y += 16;
-    doc.text(`Address: ${resume.personal.address || ''}`, 40, y);
-    y += 24;
-    if (resume.summary) {
-      doc.setFont('helvetica', 'bold');
-      doc.text('Professional Summary', 40, y);
-      y += 16;
-      doc.setFont('helvetica', 'normal');
-      doc.text(doc.splitTextToSize(resume.summary, 500), 40, y);
-      y += 32;
-    }
-    if (resume.education.filter(e => e.degree).length > 0) {
-      doc.setFont('helvetica', 'bold');
-      doc.text('Education', 40, y);
-      y += 16;
-      doc.setFont('helvetica', 'normal');
-      resume.education.filter(e => e.degree).forEach(edu => {
-        doc.text(`${edu.degree} in ${edu.department} - ${edu.institution} (${edu.year}) CGPA: ${edu.cgpa}`, 40, y);
-        y += 16;
-      });
-      y += 8;
-    }
-    if (resume.skills.filter(s => s).length > 0) {
-      doc.setFont('helvetica', 'bold');
-      doc.text('Skills', 40, y);
-      y += 16;
-      doc.setFont('helvetica', 'normal');
-      doc.text(resume.skills.filter(s => s).join(', '), 40, y);
-      y += 24;
-    }
-    if (resume.experience.filter(e => e.jobTitle).length > 0) {
-      doc.setFont('helvetica', 'bold');
-      doc.text('Experience', 40, y);
-      y += 16;
-      doc.setFont('helvetica', 'normal');
-      resume.experience.filter(e => e.jobTitle).forEach(exp => {
-        doc.text(`${exp.jobTitle} at ${exp.company} (${exp.duration}): ${exp.description}`, 40, y);
-        y += 16;
-      });
-      y += 8;
-    }
-    if (resume.projects.filter(p => p.title).length > 0) {
-      doc.setFont('helvetica', 'bold');
-      doc.text('Projects', 40, y);
-      y += 16;
-      doc.setFont('helvetica', 'normal');
-      resume.projects.filter(p => p.title).forEach(proj => {
-        doc.text(`${proj.title}: ${proj.description} [${proj.technologies}] ${proj.link ? proj.link : ''}`, 40, y);
-        y += 16;
-      });
-      y += 8;
-    }
-    if (resume.achievements.filter(a => a.title).length > 0) {
-      doc.setFont('helvetica', 'bold');
-      doc.text('Achievements / Certifications', 40, y);
-      y += 16;
-      doc.setFont('helvetica', 'normal');
-      resume.achievements.filter(a => a.title).forEach(ach => {
-        doc.text(`${ach.title} (${ach.date}): ${ach.description}`, 40, y);
-        y += 16;
-      });
-      y += 8;
-    }
-    if (resume.extracurricular.filter(e => e.role).length > 0) {
-      doc.setFont('helvetica', 'bold');
-      doc.text('Extra-curricular / Volunteer', 40, y);
-      y += 16;
-      doc.setFont('helvetica', 'normal');
-      resume.extracurricular.filter(e => e.role).forEach(ex => {
-        doc.text(`${ex.role} at ${ex.organization} (${ex.duration}): ${ex.description}`, 40, y);
-        y += 16;
-      });
-      y += 8;
-    }
-    doc.save('resume.pdf');
-  };
-
-  // Professional resume preview renderer
+  // Professional resume preview renderer based on the provided template (resume.html/css)
   const renderPreview = () => (
-    <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-8 max-w-2xl mx-auto border border-gray-200 dark:border-gray-700">
-      <div className="border-b pb-4 mb-4">
-        <h1 className="text-3xl font-bold text-primary mb-1">{resume.personal.fullName || "Your Name"}</h1>
-        <div className="flex flex-wrap gap-4 text-gray-600 dark:text-gray-300 text-sm">
-          {resume.personal.email && <span><b>Email:</b> {resume.personal.email}</span>}
-          {resume.personal.phone && <span><b>Phone:</b> {resume.personal.phone}</span>}
-          {resume.personal.linkedin && <span><b>LinkedIn:</b> {resume.personal.linkedin}</span>}
-          {resume.personal.github && <span><b>GitHub:</b> {resume.personal.github}</span>}
-          {resume.personal.address && <span><b>Address:</b> {resume.personal.address}</span>}
+    <div style={{
+      fontFamily: 'Arial, sans-serif',
+      lineHeight: '1.6',
+      color: '#333',
+      backgroundColor: '#f0f0f0',
+      padding: '20px'
+    }}>
+      <div style={{
+        maxWidth: '800px',
+        margin: '0 auto',
+        background: 'white',
+        borderRadius: '8px',
+        overflow: 'hidden',
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+      }}>
+        {/* Header gradient bar */}
+        <div style={{
+          background: 'linear-gradient(135deg, #5a6c7d, #7a8a9a)',
+          height: '40px'
+        }}></div>
+        
+        <div style={{ padding: '30px' }}>
+          {/* Profile Section */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            marginBottom: '30px',
+            gap: '30px'
+          }}>
+            {/* Profile Image Placeholder */}
+            <div style={{
+              width: '120px',
+              height: '120px',
+              border: '2px dashed #ccc',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <div style={{
+                width: '60px',
+                height: '60px',
+                border: '3px solid #666',
+                borderRadius: '50%',
+                position: 'relative',
+                background: 'white'
+              }}>
+                {/* Profile icon head */}
+                <div style={{
+                  position: 'absolute',
+                  top: '15px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: '20px',
+                  height: '20px',
+                  border: '3px solid #666',
+                  borderRadius: '50%',
+                  background: 'white'
+                }}></div>
+                {/* Profile icon body */}
+                <div style={{
+                  position: 'absolute',
+                  bottom: '8px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: '35px',
+                  height: '20px',
+                  border: '3px solid #666',
+                  borderRadius: '35px 35px 0 0',
+                  borderBottom: 'none',
+                  background: 'white'
+                }}></div>
+              </div>
+            </div>
+            
+            {/* Profile Info */}
+            <div style={{ flex: 1 }}>
+              <h1 style={{
+                fontSize: '32px',
+                fontWeight: 'bold',
+                color: '#5a6c7d',
+                marginBottom: '15px',
+                letterSpacing: '2px'
+              }}>
+                {resume.personal.fullName || 'YOUR NAME'}
+              </h1>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                <li style={{ 
+                  marginBottom: '8px', 
+                  color: '#666', 
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}>
+                  <span style={{ marginRight: '8px' }}>📍</span>
+                  {resume.personal.address || 'Your Location'}
+                </li>
+                <li style={{ 
+                  marginBottom: '8px', 
+                  color: '#666', 
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}>
+                  <span style={{ marginRight: '8px' }}>📞</span>
+                  {resume.personal.phone || 'Your Phone'}
+                </li>
+                <li style={{ 
+                  marginBottom: '8px', 
+                  color: '#666', 
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}>
+                  <span style={{ marginRight: '8px' }}>✉️</span>
+                  {resume.personal.email || 'Your Email'}
+                </li>
+                {resume.personal.linkedin && (
+                  <li style={{ 
+                    marginBottom: '8px', 
+                    color: '#666', 
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}>
+                    <span style={{ marginRight: '8px' }}>💼</span>
+                    {resume.personal.linkedin}
+                  </li>
+                )}
+                {resume.personal.github && (
+                  <li style={{ 
+                    marginBottom: '8px', 
+                    color: '#666', 
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}>
+                    <span style={{ marginRight: '8px' }}>🔗</span>
+                    {resume.personal.github}
+                  </li>
+                )}
+              </ul>
+            </div>
+          </div>
+
+          {/* Summary Section */}
+          <div style={{ marginBottom: '25px' }}>
+            <h2 style={{
+              fontSize: '12px',
+              fontWeight: 'bold',
+              textTransform: 'uppercase',
+              color: '#333',
+              marginBottom: '10px',
+              paddingBottom: '5px',
+              borderBottom: '2px solid #5a6c7d',
+              letterSpacing: '1px'
+            }}>
+              SUMMARY
+            </h2>
+            <p style={{
+              color: '#666',
+              fontSize: '14px',
+              lineHeight: '1.5'
+            }}>
+              {resume.summary || 'Your professional summary will appear here...'}
+            </p>
+          </div>
+
+          {/* Skills Section */}
+          <div style={{ marginBottom: '25px' }}>
+            <h2 style={{
+              fontSize: '12px',
+              fontWeight: 'bold',
+              textTransform: 'uppercase',
+              color: '#333',
+              marginBottom: '10px',
+              paddingBottom: '5px',
+              borderBottom: '2px solid #5a6c7d',
+              letterSpacing: '1px'
+            }}>
+              SKILLS
+            </h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {resume.skills.filter(s => s).slice(0, Math.ceil(resume.skills.filter(s => s).length / 2)).map((skill, idx) => (
+                  <li key={idx} style={{ color: '#666', fontSize: '14px', marginBottom: '5px' }}>
+                    <span style={{ color: '#5a6c7d', marginRight: '8px' }}>•</span>
+                    {skill}
+                  </li>
+                ))}
+              </ul>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {resume.skills.filter(s => s).slice(Math.ceil(resume.skills.filter(s => s).length / 2)).map((skill, idx) => (
+                  <li key={idx} style={{ color: '#666', fontSize: '14px', marginBottom: '5px' }}>
+                    <span style={{ color: '#5a6c7d', marginRight: '8px' }}>•</span>
+                    {skill}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* Experience Section */}
+          {resume.experience.filter(e => e.jobTitle).length > 0 && (
+            <div style={{ marginBottom: '25px' }}>
+              <h2 style={{
+                fontSize: '12px',
+                fontWeight: 'bold',
+                textTransform: 'uppercase',
+                color: '#333',
+                marginBottom: '10px',
+                paddingBottom: '5px',
+                borderBottom: '2px solid #5a6c7d',
+                letterSpacing: '1px'
+              }}>
+                EXPERIENCE
+              </h2>
+              {resume.experience.filter(e => e.jobTitle).map((exp, idx) => (
+                <div key={idx} style={{ marginBottom: '15px' }}>
+                  <div style={{ fontWeight: 'bold', color: '#333', fontSize: '14px' }}>
+                    {exp.jobTitle} at {exp.company}
+                  </div>
+                  <div style={{ color: '#666', fontSize: '14px', marginTop: '2px' }}>
+                    {exp.duration}
+                  </div>
+                  <div style={{ color: '#666', fontSize: '14px', marginTop: '2px' }}>
+                    {exp.description}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Education Section */}
+          {resume.education.filter(e => e.degree).length > 0 && (
+            <div style={{ marginBottom: '25px' }}>
+              <h2 style={{
+                fontSize: '12px',
+                fontWeight: 'bold',
+                textTransform: 'uppercase',
+                color: '#333',
+                marginBottom: '10px',
+                paddingBottom: '5px',
+                borderBottom: '2px solid #5a6c7d',
+                letterSpacing: '1px'
+              }}>
+                EDUCATION AND TRAINING
+              </h2>
+              {resume.education.filter(e => e.degree).map((edu, idx) => (
+                <div key={idx} style={{ marginBottom: '15px' }}>
+                  <div style={{ fontWeight: 'bold', color: '#333', fontSize: '14px' }}>
+                    {edu.institution}, {edu.year && `Expected in ${edu.year}`}
+                  </div>
+                  <div style={{ color: '#666', fontSize: '14px', marginTop: '2px' }}>
+                    {edu.degree}: {edu.department} {edu.cgpa && `(CGPA: ${edu.cgpa})`}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Projects Section */}
+          {resume.projects.filter(p => p.title).length > 0 && (
+            <div style={{ marginBottom: '25px' }}>
+              <h2 style={{
+                fontSize: '12px',
+                fontWeight: 'bold',
+                textTransform: 'uppercase',
+                color: '#333',
+                marginBottom: '10px',
+                paddingBottom: '5px',
+                borderBottom: '2px solid #5a6c7d',
+                letterSpacing: '1px'
+              }}>
+                PROJECTS
+              </h2>
+              {resume.projects.filter(p => p.title).map((proj, idx) => (
+                <div key={idx} style={{ color: '#666', fontSize: '14px', marginBottom: '5px' }}>
+                  <span style={{ color: '#5a6c7d', marginRight: '8px' }}>•</span>
+                  <strong>{proj.title}</strong>: {proj.description} [{proj.technologies}]
+                  {proj.link && (
+                    <span> - <a href={proj.link} target="_blank" rel="noopener noreferrer" style={{ color: '#5a6c7d' }}>View Project</a></span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Certifications Section */}
+          {resume.achievements.filter(a => a.title).length > 0 && (
+            <div style={{ marginBottom: '25px' }}>
+              <h2 style={{
+                fontSize: '12px',
+                fontWeight: 'bold',
+                textTransform: 'uppercase',
+                color: '#333',
+                marginBottom: '10px',
+                paddingBottom: '5px',
+                borderBottom: '2px solid #5a6c7d',
+                letterSpacing: '1px'
+              }}>
+                CERTIFICATIONS
+              </h2>
+              {resume.achievements.filter(a => a.title).map((cert, idx) => (
+                <div key={idx} style={{ color: '#666', fontSize: '14px', marginBottom: '5px' }}>
+                  <span style={{ color: '#5a6c7d', marginRight: '8px' }}>•</span>
+                  {cert.title} {cert.date && `(${cert.date})`}
+                  {cert.description && (
+                    <div style={{ marginLeft: '16px', marginTop: '2px', fontSize: '13px' }}>
+                      {cert.description}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Activities and Honors Section */}
+          {resume.extracurricular.filter(e => e.role).length > 0 && (
+            <div style={{ marginBottom: '25px' }}>
+              <h2 style={{
+                fontSize: '12px',
+                fontWeight: 'bold',
+                textTransform: 'uppercase',
+                color: '#333',
+                marginBottom: '10px',
+                paddingBottom: '5px',
+                borderBottom: '2px solid #5a6c7d',
+                letterSpacing: '1px'
+              }}>
+                ACTIVITIES AND HONORS
+              </h2>
+              {resume.extracurricular.filter(e => e.role).map((activity, idx) => (
+                <div key={idx} style={{ color: '#666', fontSize: '14px', marginBottom: '5px' }}>
+                  <span style={{ color: '#5a6c7d', marginRight: '8px' }}>•</span>
+                  {activity.role} at {activity.organization} {activity.duration && `(${activity.duration})`}
+                  {activity.description && (
+                    <div style={{ marginLeft: '16px', marginTop: '2px', fontSize: '13px' }}>
+                      {activity.description}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
-      {resume.summary && (
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-indigo-700 dark:text-indigo-400 mb-1">Professional Summary</h2>
-          <p className="text-gray-800 dark:text-gray-200 leading-relaxed">{resume.summary}</p>
-        </div>
-      )}
-      {resume.education.filter(e => e.degree).length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-indigo-700 dark:text-indigo-400 mb-1">Education</h2>
-          <ul className="list-disc ml-6">
-            {resume.education.filter(e => e.degree).map((edu, idx) => (
-              <li key={idx} className="mb-1">
-                <span className="font-semibold">{edu.degree}</span> in {edu.department} - {edu.institution} ({edu.year}) <span className="text-xs">CGPA: {edu.cgpa}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {resume.skills.filter(s => s).length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-indigo-700 dark:text-indigo-400 mb-1">Skills</h2>
-          <div className="flex flex-wrap gap-2">
-            {resume.skills.filter(s => s).map((skill, idx) => (
-              <span key={idx} className="bg-indigo-100 dark:bg-indigo-800 text-indigo-700 dark:text-indigo-200 px-3 py-1 rounded-full text-sm font-medium shadow">{skill}</span>
-            ))}
-          </div>
-        </div>
-      )}
-      {resume.experience.filter(e => e.jobTitle).length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-indigo-700 dark:text-indigo-400 mb-1">Experience</h2>
-          <ul className="list-disc ml-6">
-            {resume.experience.filter(e => e.jobTitle).map((exp, idx) => (
-              <li key={idx} className="mb-1">
-                <span className="font-semibold">{exp.jobTitle}</span> at {exp.company} <span className="text-xs">({exp.duration})</span>
-                <div className="text-gray-700 dark:text-gray-300 ml-2">{exp.description}</div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {resume.projects.filter(p => p.title).length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-indigo-700 dark:text-indigo-400 mb-1">Projects</h2>
-          <ul className="list-disc ml-6">
-            {resume.projects.filter(p => p.title).map((proj, idx) => (
-              <li key={idx} className="mb-1">
-                <span className="font-semibold">{proj.title}</span> <span className="text-xs">[{proj.technologies}]</span>
-                <div className="text-gray-700 dark:text-gray-300 ml-2">{proj.description} {proj.link && (<a href={proj.link} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">(Link)</a>)}</div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {resume.achievements.filter(a => a.title).length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-indigo-700 dark:text-indigo-400 mb-1">Achievements / Certifications</h2>
-          <ul className="list-disc ml-6">
-            {resume.achievements.filter(a => a.title).map((ach, idx) => (
-              <li key={idx} className="mb-1">
-                <span className="font-semibold">{ach.title}</span> <span className="text-xs">({ach.date})</span>
-                <div className="text-gray-700 dark:text-gray-300 ml-2">{ach.description}</div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {resume.extracurricular.filter(e => e.role).length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-indigo-700 dark:text-indigo-400 mb-1">Extra-curricular / Volunteer</h2>
-          <ul className="list-disc ml-6">
-            {resume.extracurricular.filter(e => e.role).map((ex, idx) => (
-              <li key={idx} className="mb-1">
-                <span className="font-semibold">{ex.role}</span> at {ex.organization} <span className="text-xs">({ex.duration})</span>
-                <div className="text-gray-700 dark:text-gray-300 ml-2">{ex.description}</div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
     </div>
   );
 
-  // Save resume data to Supabase
+  // Save resume data to Supabase (using existing columns)
   const handleSaveResume = async () => {
     if (!profile?.id) return;
     setLoading(true);
+    
+    // Map form data to existing database columns
+    const updateData = {
+      // Personal info is likely stored in other fields or profile table
+      // Education data
+      education: resume.education.filter(e => e.degree).length > 0 ? resume.education : null,
+      // Experience data  
+      experience: resume.experience.filter(e => e.jobTitle).length > 0 ? resume.experience : null,
+      // Projects data
+      projects: resume.projects.filter(p => p.title).length > 0 ? resume.projects : null,
+      // Skills as array
+      skills: resume.skills.filter(s => s) || []
+    };
+    
     const { error } = await supabase
       .from('students')
-      .update({ resume_form_data: resume })
+      .update(updateData)
       .eq('id', profile.id);
+      
     setLoading(false);
     setSaveStatus(error ? 'Error saving resume.' : 'Resume saved!');
     setTimeout(() => setSaveStatus(null), 3000);

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hemachandran - Resume</title>
+    <link rel="stylesheet" href="resume.css">
+    <script>
+        // Initialize variables with default values
+        let resumeData = {
+            name: "HEMACHANDRAN",
+            location: "Coimbatore, India 641017",
+            phone: "1234567890",
+            email: "example123@gmail.com",
+            summary: "Highly-motivated employee with desire to take on new challenges. Strong work ethic, adaptability, and exceptional interpersonal skills. Adept at working effectively unsupervised and quickly mastering new skills.",
+            skills: ["Machine learning", "Python programming", "Problem solving", "Critical thinking"]
+        };
+
+        // Function to update the resume content
+        function updateResume() {
+            document.getElementById('fullName').textContent = resumeData.name;
+            document.getElementById('location').textContent = resumeData.location;
+            document.getElementById('phone').textContent = resumeData.phone;
+            document.getElementById('email').textContent = resumeData.email;
+            document.getElementById('summary').textContent = resumeData.summary;
+            
+            // Update skills
+            const skillsList = document.getElementById('skillsList');
+            skillsList.innerHTML = '';
+            resumeData.skills.forEach(skill => {
+                const li = document.createElement('li');
+                li.textContent = skill;
+                skillsList.appendChild(li);
+            });
+        }
+
+        // Function to update a specific field
+        function updateField(field, value) {
+            resumeData[field] = value;
+            updateResume();
+        }
+    </script>
+</head>
+<body onload="updateResume()">
+    <div class="resume-container">
+        <div class="header"></div>
+        
+        <div class="main-content">
+            <div class="profile-section">
+                <div class="profile-info">
+                    <h1 class="name" id="fullName"></h1>
+                    <ul class="contact-info">
+                        <li id="location"></li>
+                        <li id="phone"></li>
+                        <li id="email"></li>
+                    </ul>
+                </div>
+                <!-- Controls for updating profile information -->
+                <div class="edit-controls">
+                    <h3>Update Profile Information:</h3>
+                    <input type="text" placeholder="Name" onchange="updateField('name', this.value)">
+                    <input type="text" placeholder="Location" onchange="updateField('location', this.value)">
+                    <input type="text" placeholder="Phone" onchange="updateField('phone', this.value)">
+                    <input type="text" placeholder="Email" onchange="updateField('email', this.value)">
+                </div>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">Summary</h2>
+                <p class="summary-text" id="summary"></p>
+                <textarea onchange="updateField('summary', this.value)" placeholder="Update summary..."></textarea>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">Skills</h2>
+                <div class="skills-grid">
+                    <ul class="skills-column" id="skillsList">
+                        <!-- Skills will be populated by JavaScript -->
+                    </ul>
+                </div>
+                <input type="text" placeholder="Add new skill" id="newSkill" 
+                       onkeypress="if(event.key === 'Enter') { 
+                           resumeData.skills.push(this.value); 
+                           updateResume(); 
+                           this.value = ''; 
+                       }"
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">Experience</h2>
+                <!-- Experience content would go here -->
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">Education and Training</h2>
+                <div class="education-item">
+                    <div class="education-institution">SIET, Coimbatore, India, Expected in 04/2027</div>
+                    <div class="education-degree">B.Tech: Artificial Intelligence And Machine Learning</div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">Certifications</h2>
+                <div class="cert-item">AFGGGFADGSRSG</div>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">Accomplishments</h2>
+                <div class="accomplishment-item">THWYGGDWRHTWRGFD</div>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">Activities and Honors</h2>
+                <div class="activity-item">T43YQ54W6YIRGFDGSFGG</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
