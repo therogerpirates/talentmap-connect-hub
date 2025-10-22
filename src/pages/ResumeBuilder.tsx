@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { PDFDownloadLink, Page, Text, View, Document, StyleSheet } from '@react-pdf/renderer';
+import { PDFDownloadLink, Page, Text, View, Document, StyleSheet, Font } from '@react-pdf/renderer';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
-import { BookOpen, FileText, User } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { BookOpen, FileText, User, Download as DownloadIcon, Upload, Bold, Palette } from 'lucide-react';
+import { text } from "stream/consumers";
+
+// Template type
+type TemplateType = 'professional' | 'ats';
 
 // Initial data structure for the resume
 const initialResumeData = {
@@ -67,12 +71,275 @@ const pdfStyles = StyleSheet.create({
     marginBottom: 4,
     lineHeight: 1.4,
   },
+  textWrapped: {
+    fontSize: 10,
+    color: '#666',
+    marginBottom: 4,
+    lineHeight: 1.4,
+    maxWidth: '100%',
+  },
   bulletPoint: {
     fontSize: 10,
     color: '#666',
     marginBottom: 3,
   },
+  bulletPointWrapped: {
+    fontSize: 10,
+    color: '#666',
+    marginBottom: 3,
+    maxWidth: '100%',
+  },
 });
+
+// ATS-Friendly PDF Styles (LaTeX-inspired minimal design)
+const atsStyles = StyleSheet.create({
+  page: {
+    padding: '0.6in',
+    fontFamily: 'Helvetica',
+    fontSize: 10,
+    color: '#000',
+    lineHeight: 1.4,
+  },
+  header: {
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  name: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+  },
+  contactLine: {
+    fontSize: 9,
+    color: '#333',
+    marginBottom: 2,
+  },
+  divider: {
+    borderBottom: '1pt solid #000',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    marginBottom: 6,
+    marginTop: 8,
+  },
+  sectionTitleUnderline: {
+    borderBottom: '0.5pt solid #000',
+    marginBottom: 6,
+  },
+  text: {
+    fontSize: 9,
+    color: '#000',
+    marginBottom: 3,
+    lineHeight: 1.3,
+  },
+  bulletPoint: {
+    fontSize: 9,
+    color: '#000',
+    marginBottom: 2,
+    marginLeft: 12,
+  },
+  bulletPointWrapped: {
+    fontSize: 9,
+    color: '#000',
+    marginBottom: 2,
+    marginLeft: 12,
+    maxWidth: '100%',
+  },
+  subsectionHeader: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginBottom: 3,
+    marginTop: 4,
+  },
+  dateRight: {
+    fontSize: 9,
+    fontStyle: 'italic',
+    color: '#333',
+  },
+  skillsText: {
+    fontSize: 9,
+    color: '#000',
+    lineHeight: 1.4,
+  },
+});
+
+// ATS-Friendly Resume PDF Component
+const ATSResumePDF = ({ resume }: { resume: typeof initialResumeData }) => (
+  <Document>
+    <Page size="A4" style={atsStyles.page}>
+      {/* Header */}
+      <View style={atsStyles.header}>
+        <Text style={atsStyles.name}>{resume.personal.fullName || 'YOUR NAME'}</Text>
+        <Text style={atsStyles.contactLine}>
+          {resume.personal.phone && `${resume.personal.phone} | `}
+          {resume.personal.email && `${resume.personal.email}`}
+          {resume.personal.linkedin && ` | ${resume.personal.linkedin}`}
+        </Text>
+        {resume.personal.address && (
+          <Text style={atsStyles.contactLine}>{resume.personal.address}</Text>
+        )}
+      </View>
+
+      <View style={atsStyles.divider}></View>
+
+      {/* Summary */}
+      {resume.summary && (
+        <View>
+          <Text style={atsStyles.sectionTitle}>SUMMARY</Text>
+          <View style={atsStyles.sectionTitleUnderline}></View>
+          <Text style={atsStyles.text}>{resume.summary}</Text>
+        </View>
+      )}
+
+      {/* Education */}
+      {resume.education.filter(e => e.degree).length > 0 && (
+        <View>
+          <Text style={atsStyles.sectionTitle}>EDUCATION</Text>
+          <View style={atsStyles.sectionTitleUnderline}></View>
+          {resume.education.filter(e => e.degree).map((edu, idx) => (
+            <View key={idx} style={{ marginBottom: 6 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={atsStyles.subsectionHeader}>
+                  {edu.degree} in {edu.department}
+                </Text>
+                {edu.year && (
+                  <Text style={atsStyles.dateRight}>{edu.year}</Text>
+                )}
+              </View>
+              <Text style={atsStyles.text}>
+                {edu.institution}
+                {edu.cgpa && ` | CGPA: ${edu.cgpa}/10`}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Skills */}
+      {resume.skills.filter(s => s).length > 0 && (
+        <View>
+          <Text style={atsStyles.sectionTitle}>SKILLS</Text>
+          <View style={atsStyles.sectionTitleUnderline}></View>
+          <Text style={atsStyles.skillsText}>
+            {resume.skills.filter(s => s).join(', ')}
+          </Text>
+        </View>
+      )}
+
+      {/* Projects */}
+      {resume.projects.filter(p => p.title).length > 0 && (
+        <View>
+          <Text style={atsStyles.sectionTitle}>PROJECTS</Text>
+          <View style={atsStyles.sectionTitleUnderline}></View>
+          {resume.projects.filter(p => p.title).map((proj, idx) => (
+            <View key={idx} style={{ marginBottom: 6 }}>
+              <Text style={atsStyles.subsectionHeader}>{proj.title}</Text>
+              {proj.technologies && (
+                <Text style={{ ...atsStyles.text, fontStyle: 'italic' }}>
+                  {proj.technologies}
+                </Text>
+              )}
+              {proj.description && (
+                <View>
+                  {proj.description.split('\n').filter(line => line.trim()).map((line, i) => (
+                    <Text key={i} style={atsStyles.bulletPointWrapped}>
+                      {line.trim().startsWith('--') || line.trim().startsWith('•') || line.trim().startsWith('-')
+                        ? line.trim()
+                        : `-- ${line.trim()}`}
+                    </Text>
+                  ))}
+                </View>
+              )}
+              {proj.link && (
+                <Text style={atsStyles.text}>Link: {proj.link}</Text>
+              )}
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Experience */}
+      {resume.experience.filter(e => e.jobTitle).length > 0 && (
+        <View>
+          <Text style={atsStyles.sectionTitle}>EXPERIENCE</Text>
+          <View style={atsStyles.sectionTitleUnderline}></View>
+          {resume.experience.filter(e => e.jobTitle).map((exp, idx) => (
+            <View key={idx} style={{ marginBottom: 6 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={atsStyles.subsectionHeader}>
+                  {exp.jobTitle} at {exp.company}
+                </Text>
+                {exp.duration && (
+                  <Text style={atsStyles.dateRight}>{exp.duration}</Text>
+                )}
+              </View>
+              {exp.description && (
+                <View>
+                  {exp.description.split('\n').filter(line => line.trim()).map((line, i) => (
+                    <Text key={i} style={atsStyles.bulletPointWrapped}>
+                      {line.trim().startsWith('--') || line.trim().startsWith('•') || line.trim().startsWith('-')
+                        ? line.trim()
+                        : `-- ${line.trim()}`}
+                    </Text>
+                  ))}
+                </View>
+              )}
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Certifications */}
+      {resume.achievements.filter(a => a.title).length > 0 && (
+        <View>
+          <Text style={atsStyles.sectionTitle}>CERTIFICATES</Text>
+          <View style={atsStyles.sectionTitleUnderline}></View>
+          {resume.achievements.filter(a => a.title).map((cert, idx) => (
+            <View key={idx} style={{ marginBottom: 3 }}>
+              <Text style={atsStyles.text}>
+                <Text style={{ fontWeight: 'bold' }}>{cert.title}</Text>
+                {cert.description && ` - ${cert.description}`}
+                {cert.date && ` (${cert.date})`}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Activities and Honors */}
+      {resume.extracurricular.filter(e => e.role).length > 0 && (
+        <View>
+          <Text style={atsStyles.sectionTitle}>ACTIVITIES AND HONORS</Text>
+          <View style={atsStyles.sectionTitleUnderline}></View>
+          {resume.extracurricular.filter(e => e.role).map((activity, idx) => (
+            <View key={idx} style={{ marginBottom: 3 }}>
+              <Text style={atsStyles.text}>
+                {activity.role} at {activity.organization}
+                {activity.duration && ` (${activity.duration})`}
+              </Text>
+              {activity.description && (
+                <View>
+                  {activity.description.split('\n').filter(line => line.trim()).map((line, i) => (
+                    <Text key={i} style={atsStyles.bulletPointWrapped}>
+                      {line.trim().startsWith('--') || line.trim().startsWith('•') || line.trim().startsWith('-')
+                        ? line.trim()
+                        : `-- ${line.trim()}`}
+                    </Text>
+                  ))}
+                </View>
+              )}
+            </View>
+          ))}
+        </View>
+      )}
+    </Page>
+  </Document>
+);
 
 const ResumePDF = ({ resume }: { resume: typeof initialResumeData }) => (
   <Document>
@@ -83,14 +350,14 @@ const ResumePDF = ({ resume }: { resume: typeof initialResumeData }) => (
       {/* Name and Contact */}
       <View style={pdfStyles.section}>
         <Text style={pdfStyles.name}>{resume.personal.fullName || 'YOUR NAME'}</Text>
-        <Text style={pdfStyles.contactInfo}>📍 {resume.personal.address || 'Your Location'}</Text>
-        <Text style={pdfStyles.contactInfo}>📞 {resume.personal.phone || 'Your Phone'}</Text>
-        <Text style={pdfStyles.contactInfo}>✉️ {resume.personal.email || 'Your Email'}</Text>
+        <Text style={pdfStyles.contactInfo}>{resume.personal.address || 'Your Location'}</Text>
+        <Text style={pdfStyles.contactInfo}>{resume.personal.phone || 'Your Phone'}</Text>
+        <Text style={pdfStyles.contactInfo}>{resume.personal.email || 'Your Email'}</Text>
         {resume.personal.linkedin && (
-          <Text style={pdfStyles.contactInfo}>💼 {resume.personal.linkedin}</Text>
+          <Text style={pdfStyles.contactInfo}>{resume.personal.linkedin}</Text>
         )}
         {resume.personal.github && (
-          <Text style={pdfStyles.contactInfo}>🔗 {resume.personal.github}</Text>
+          <Text style={pdfStyles.contactInfo}>{resume.personal.github}</Text>
         )}
       </View>
 
@@ -111,6 +378,7 @@ const ResumePDF = ({ resume }: { resume: typeof initialResumeData }) => (
           ))}
         </View>
       )}
+      
 
       {/* Experience */}
       {resume.experience.filter(e => e.jobTitle).length > 0 && (
@@ -122,7 +390,17 @@ const ResumePDF = ({ resume }: { resume: typeof initialResumeData }) => (
                 {exp.jobTitle} at {exp.company}
               </Text>
               <Text style={pdfStyles.text}>{exp.duration}</Text>
-              <Text style={pdfStyles.text}>{exp.description}</Text>
+              {exp.description && (
+                <View>
+                  {exp.description.split('\n').filter(line => line.trim()).map((line, i) => (
+                    <Text key={i} style={pdfStyles.textWrapped}>
+                      {line.trim().startsWith('•') || line.trim().startsWith('-') || line.trim().startsWith('*')
+                        ? line.trim()
+                        : `• ${line.trim()}`}
+                    </Text>
+                  ))}
+                </View>
+              )}
             </View>
           ))}
         </View>
@@ -150,9 +428,20 @@ const ResumePDF = ({ resume }: { resume: typeof initialResumeData }) => (
         <View style={pdfStyles.section}>
           <Text style={pdfStyles.sectionTitle}>PROJECTS</Text>
           {resume.projects.filter(p => p.title).map((proj, idx) => (
-            <Text key={idx} style={pdfStyles.bulletPoint}>
-              • {proj.title}: {proj.description} [{proj.technologies}]
-            </Text>
+            <View key={idx} style={{ marginBottom: 6 }}>
+              <Text style={{ ...pdfStyles.text, fontWeight: 'bold' }}>
+                • {proj.title} [{proj.technologies}]
+              </Text>
+              {proj.description && (
+                <View style={{ marginLeft: 10 }}>
+                  {proj.description.split('\n').filter(line => line.trim()).map((line, i) => (
+                    <Text key={i} style={pdfStyles.textWrapped}>
+                      {line.trim()}
+                    </Text>
+                  ))}
+                </View>
+              )}
+            </View>
           ))}
         </View>
       )}
@@ -172,9 +461,20 @@ const ResumePDF = ({ resume }: { resume: typeof initialResumeData }) => (
         <View style={pdfStyles.section}>
           <Text style={pdfStyles.sectionTitle}>ACTIVITIES AND HONORS</Text>
           {resume.extracurricular.filter(e => e.role).map((activity, idx) => (
-            <Text key={idx} style={pdfStyles.bulletPoint}>
-              • {activity.role} at {activity.organization} ({activity.duration})
-            </Text>
+            <View key={idx} style={{ marginBottom: 6 }}>
+              <Text style={pdfStyles.bulletPoint}>
+                • {activity.role} at {activity.organization} ({activity.duration})
+              </Text>
+              {activity.description && (
+                <View style={{ marginLeft: 10 }}>
+                  {activity.description.split('\n').filter(line => line.trim()).map((line, i) => (
+                    <Text key={i} style={pdfStyles.textWrapped}>
+                      {line.trim()}
+                    </Text>
+                  ))}
+                </View>
+              )}
+            </View>
           ))}
         </View>
       )}
@@ -188,36 +488,149 @@ const ResumeBuilder: React.FC = () => {
   const { profile } = useAuth();
   const [loading, setLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
+  const [currentResumeId, setCurrentResumeId] = useState<string | null>(null);
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  const [importingFromResume, setImportingFromResume] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateType>('professional');
   const navigate = useNavigate();
 
-  // Load resume data from Supabase on mount
+  // Auto-save to localStorage whenever resume data changes
   useEffect(() => {
-    const fetchResume = async () => {
+    if (!profile?.id || !autoSaveEnabled) return;
+    
+    const autoSaveTimer = setTimeout(() => {
+      const resumeBackup = {
+        id: currentResumeId || `resume_${Date.now()}`,
+        student_id: profile.id,
+        resume_data: resume,
+        updated_at: new Date().toISOString()
+      };
+      localStorage.setItem(`resume_${profile.id}`, JSON.stringify(resumeBackup));
+      console.log('Auto-saved to localStorage');
+    }, 2000); // Auto-save after 2 seconds of inactivity
+
+    return () => clearTimeout(autoSaveTimer);
+  }, [resume, profile, currentResumeId, autoSaveEnabled]);
+
+  // Auto-fill and load resume data from Supabase on mount
+  useEffect(() => {
+    const fetchAndAutoFillResume = async () => {
       if (!profile?.id) return;
       setLoading(true);
-      const { data, error } = await supabase
-        .from('students')
-        .select('education, experience, projects, skills')
-        .eq('id', profile.id)
-        .single();
+      setAutoSaveEnabled(false); // Disable auto-save during initial load
       
-      if (data && !error) {
-        // Map existing data back to form structure with type checking
-        const mappedResume = {
-          ...resume,
-          education: (Array.isArray(data.education) && data.education.every(e => typeof e === 'object' && e !== null)) 
-            ? data.education as typeof resume.education : resume.education,
-          experience: (Array.isArray(data.experience) && data.experience.every(e => typeof e === 'object' && e !== null)) 
-            ? data.experience as typeof resume.experience : resume.experience,
-          projects: (Array.isArray(data.projects) && data.projects.every(p => typeof p === 'object' && p !== null)) 
-            ? data.projects as typeof resume.projects : resume.projects,
-          skills: Array.isArray(data.skills) ? data.skills as string[] : resume.skills
+      try {
+        // Check localStorage first for saved resume
+        const savedResume = localStorage.getItem(`resume_${profile.id}`);
+        if (savedResume) {
+          try {
+            const parsed = JSON.parse(savedResume);
+            if (parsed.resume_data) {
+              // Ensure the loaded data has all required fields
+              const loadedResume = {
+                ...initialResumeData,
+                ...parsed.resume_data,
+                personal: {
+                  ...initialResumeData.personal,
+                  ...parsed.resume_data.personal
+                }
+              };
+              setResume(loadedResume);
+              setCurrentResumeId(parsed.id);
+              setSaveStatus('✓ Loaded saved resume');
+              setTimeout(() => setSaveStatus(null), 3000);
+              setLoading(false);
+              setAutoSaveEnabled(true); // Re-enable auto-save
+              return;
+            }
+          } catch (e) {
+            console.error('Error parsing saved resume:', e);
+          }
+        }
+
+        // Fetch profile data (includes full_name, email, college, etc.)
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('full_name, email, college')
+          .eq('id', profile.id)
+          .single();
+
+        // Fetch student data (includes skills, education, experience, projects, etc.)
+        const { data: studentData } = await supabase
+          .from('students')
+          .select('*')
+          .eq('id', profile.id)
+          .single();
+
+        // Auto-fill from profile and student data
+        const autoFilledResume = {
+          personal: {
+            fullName: profileData?.full_name || '',
+            email: profileData?.email || '',
+            phone: (studentData as any)?.phone || '',
+            address: (studentData as any)?.address || '',
+            linkedin: (studentData as any)?.linkedin_url || '',
+            github: (studentData as any)?.github_url || ''
+          },
+          education: Array.isArray((studentData as any)?.education) && (studentData as any).education.length > 0
+            ? (studentData as any).education.map((edu: any) => ({
+                degree: edu.degree || '',
+                institution: edu.institution || profileData?.college || '',
+                department: edu.department || studentData?.department || '',
+                year: edu.year || '', // User must enter year manually
+                cgpa: edu.cgpa || studentData?.gpa || ''
+              }))
+            : [{
+                degree: '',
+                institution: profileData?.college || '',
+                department: studentData?.department || '',
+                year: '', // User must enter year manually
+                cgpa: studentData?.gpa || ''
+              }],
+          skills: Array.isArray(studentData?.skills) && studentData.skills.length > 0 
+            ? studentData.skills 
+            : [''],
+          experience: Array.isArray((studentData as any)?.experience) && (studentData as any).experience.length > 0
+            ? (studentData as any).experience.map((exp: any) => ({
+                jobTitle: exp.jobTitle || exp.position || '',
+                company: exp.company || '',
+                duration: exp.duration || '',
+                description: exp.description || ''
+              }))
+            : [{ jobTitle: '', company: '', duration: '', description: '' }],
+          projects: Array.isArray((studentData as any)?.projects) && (studentData as any).projects.length > 0
+            ? (studentData as any).projects.map((proj: any) => ({
+                title: proj.title || '',
+                description: proj.description || '',
+                technologies: proj.technologies || '',
+                link: proj.link || ''
+              }))
+            : [{ title: '', description: '', technologies: '', link: '' }],
+          achievements: Array.isArray((studentData as any)?.certifications) && (studentData as any).certifications.length > 0
+            ? (studentData as any).certifications.map((cert: any) => ({
+                title: cert.title || cert.name || '',
+                description: cert.description || '',
+                date: cert.date || ''
+              }))
+            : [{ title: '', description: '', date: '' }],
+          extracurricular: [{ role: '', organization: '', duration: '', description: '' }],
+          summary: studentData?.summary || ''
         };
-        setResume(mappedResume);
+        
+        setResume(autoFilledResume);
+        setSaveStatus('✓ Data loaded from your profile');
+        setTimeout(() => setSaveStatus(null), 3000);
+      } catch (error) {
+        console.error('Error fetching resume data:', error);
+        setSaveStatus('⚠ Error loading data');
+        setTimeout(() => setSaveStatus(null), 3000);
+      } finally {
+        setLoading(false);
+        setAutoSaveEnabled(true); // Re-enable auto-save
       }
-      setLoading(false);
     };
-    fetchResume();
+    
+    fetchAndAutoFillResume();
   }, [profile]);
 
   // Validation helper
@@ -326,7 +739,289 @@ const ResumeBuilder: React.FC = () => {
   };
 
   // Professional resume preview renderer based on the provided template (resume.html/css)
-  const renderPreview = () => (
+  const renderPreview = () => {
+    if (selectedTemplate === 'ats') {
+      return renderATSPreview();
+    }
+    return renderProfessionalPreview();
+  };
+
+  // ATS-Friendly Preview (LaTeX-inspired minimal design)
+  const renderATSPreview = () => (
+    <div style={{
+      fontFamily: 'Times New Roman, serif',
+      lineHeight: '1.4',
+      color: '#000',
+      backgroundColor: '#fff',
+      padding: '20px'
+    }}>
+      <div style={{
+        maxWidth: '800px',
+        margin: '0 auto',
+        background: 'white',
+        padding: '30px'
+      }}>
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+          <h1 style={{
+            fontSize: '26px',
+            fontWeight: 'bold',
+            marginBottom: '10px',
+            textTransform: 'uppercase',
+            letterSpacing: '1px'
+          }}>
+            {resume.personal.fullName || 'YOUR NAME'}
+          </h1>
+          <div style={{ fontSize: '11px', color: '#333', marginBottom: '5px' }}>
+            {resume.personal.phone && `${resume.personal.phone} | `}
+            {resume.personal.email && `${resume.personal.email}`}
+            {resume.personal.linkedin && ` | ${resume.personal.linkedin}`}
+          </div>
+          {resume.personal.address && (
+            <div style={{ fontSize: '11px', color: '#333' }}>{resume.personal.address}</div>
+          )}
+        </div>
+
+        <div style={{ borderBottom: '1px solid #000', marginBottom: '15px' }}></div>
+
+        {/* Summary */}
+        {resume.summary && (
+          <div style={{ marginBottom: '20px' }}>
+            <h2 style={{
+              fontSize: '13px',
+              fontWeight: 'bold',
+              textTransform: 'uppercase',
+              marginBottom: '8px',
+              letterSpacing: '0.5px'
+            }}>
+              SUMMARY
+            </h2>
+            <div style={{ borderBottom: '0.5px solid #000', marginBottom: '8px' }}></div>
+            <p style={{ 
+              fontSize: '11px', 
+              lineHeight: '1.4', 
+              textAlign: 'justify',
+              wordWrap: 'break-word',
+              wordBreak: 'break-word',
+              whiteSpace: 'pre-wrap',
+              overflowWrap: 'break-word'
+            }}>
+              {resume.summary}
+            </p>
+          </div>
+        )}
+
+        {/* Education */}
+        {resume.education.filter(e => e.degree).length > 0 && (
+          <div style={{ marginBottom: '20px' }}>
+            <h2 style={{
+              fontSize: '13px',
+              fontWeight: 'bold',
+              textTransform: 'uppercase',
+              marginBottom: '8px',
+              letterSpacing: '0.5px'
+            }}>
+              EDUCATION
+            </h2>
+            <div style={{ borderBottom: '0.5px solid #000', marginBottom: '8px' }}></div>
+            {resume.education.filter(e => e.degree).map((edu, idx) => (
+              <div key={idx} style={{ marginBottom: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ fontWeight: 'bold', fontSize: '11px' }}>
+                    {edu.degree} in {edu.department}
+                  </div>
+                  {edu.year && (
+                    <div style={{ fontSize: '11px', fontStyle: 'italic', color: '#333' }}>
+                      {edu.year}
+                    </div>
+                  )}
+                </div>
+                <div style={{ fontSize: '11px', marginTop: '2px' }}>
+                  {edu.institution}
+                  {edu.cgpa && ` | CGPA: ${edu.cgpa}/10`}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Skills */}
+        {resume.skills.filter(s => s).length > 0 && (
+          <div style={{ marginBottom: '20px' }}>
+            <h2 style={{
+              fontSize: '13px',
+              fontWeight: 'bold',
+              textTransform: 'uppercase',
+              marginBottom: '8px',
+              letterSpacing: '0.5px'
+            }}>
+              SKILLS
+            </h2>
+            <div style={{ borderBottom: '0.5px solid #000', marginBottom: '8px' }}></div>
+            <div style={{ fontSize: '11px', lineHeight: '1.5' }}>
+              {resume.skills.filter(s => s).join(', ')}
+            </div>
+          </div>
+        )}
+
+        {/* Projects */}
+        {resume.projects.filter(p => p.title).length > 0 && (
+          <div style={{ marginBottom: '20px' }}>
+            <h2 style={{
+              fontSize: '13px',
+              fontWeight: 'bold',
+              textTransform: 'uppercase',
+              marginBottom: '8px',
+              letterSpacing: '0.5px'
+            }}>
+              PROJECTS
+            </h2>
+            <div style={{ borderBottom: '0.5px solid #000', marginBottom: '8px' }}></div>
+            {resume.projects.filter(p => p.title).map((proj, idx) => (
+              <div key={idx} style={{ marginBottom: '12px' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '11px', marginBottom: '3px' }}>
+                  {proj.title}
+                </div>
+                {proj.technologies && (
+                  <div style={{ fontSize: '10px', fontStyle: 'italic', color: '#333', marginBottom: '3px' }}>
+                    {proj.technologies}
+                  </div>
+                )}
+                {proj.description && (
+                  <div style={{ fontSize: '11px', lineHeight: '1.4' }}>
+                    {proj.description.split('\n').map((line, i) => (
+                      <div key={i} style={{ 
+                        marginLeft: '15px', 
+                        marginBottom: '2px',
+                        wordWrap: 'break-word',
+                        wordBreak: 'break-word',
+                        whiteSpace: 'pre-wrap',
+                        overflowWrap: 'break-word'
+                      }}>
+                        -- {line.trim()}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Experience */}
+        {resume.experience.filter(e => e.jobTitle).length > 0 && (
+          <div style={{ marginBottom: '20px' }}>
+            <h2 style={{
+              fontSize: '13px',
+              fontWeight: 'bold',
+              textTransform: 'uppercase',
+              marginBottom: '8px',
+              letterSpacing: '0.5px'
+            }}>
+              EXPERIENCE
+            </h2>
+            <div style={{ borderBottom: '0.5px solid #000', marginBottom: '8px' }}></div>
+            {resume.experience.filter(e => e.jobTitle).map((exp, idx) => (
+              <div key={idx} style={{ marginBottom: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ fontWeight: 'bold', fontSize: '11px' }}>
+                    {exp.jobTitle} at {exp.company}
+                  </div>
+                  {exp.duration && (
+                    <div style={{ fontSize: '11px', fontStyle: 'italic', color: '#333' }}>
+                      {exp.duration}
+                    </div>
+                  )}
+                </div>
+                {exp.description && (
+                  <div style={{ fontSize: '11px', lineHeight: '1.4', marginTop: '3px' }}>
+                    {exp.description.split('\n').map((line, i) => (
+                      <div key={i} style={{ 
+                        marginLeft: '15px', 
+                        marginBottom: '2px',
+                        wordWrap: 'break-word',
+                        wordBreak: 'break-word',
+                        whiteSpace: 'pre-wrap',
+                        overflowWrap: 'break-word'
+                      }}>
+                        -- {line.trim()}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Certifications */}
+        {resume.achievements.filter(a => a.title).length > 0 && (
+          <div style={{ marginBottom: '20px' }}>
+            <h2 style={{
+              fontSize: '13px',
+              fontWeight: 'bold',
+              textTransform: 'uppercase',
+              marginBottom: '8px',
+              letterSpacing: '0.5px'
+            }}>
+              CERTIFICATES
+            </h2>
+            <div style={{ borderBottom: '0.5px solid #000', marginBottom: '8px' }}></div>
+            {resume.achievements.filter(a => a.title).map((cert, idx) => (
+              <div key={idx} style={{ 
+                fontSize: '11px', 
+                marginBottom: '4px',
+                wordWrap: 'break-word',
+                wordBreak: 'break-word',
+                whiteSpace: 'pre-wrap',
+                overflowWrap: 'break-word'
+              }}>
+                <strong>{cert.title}</strong>
+                {cert.description && ` - ${cert.description}`}
+                {cert.date && ` (${cert.date})`}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Activities and Honors */}
+        {resume.extracurricular.filter(e => e.role).length > 0 && (
+          <div style={{ marginBottom: '20px' }}>
+            <h2 style={{
+              fontSize: '13px',
+              fontWeight: 'bold',
+              textTransform: 'uppercase',
+              marginBottom: '8px',
+              letterSpacing: '0.5px'
+            }}>
+              ACTIVITIES AND HONORS
+            </h2>
+            <div style={{ borderBottom: '0.5px solid #000', marginBottom: '8px' }}></div>
+            {resume.extracurricular.filter(e => e.role).map((activity, idx) => (
+              <div key={idx} style={{ fontSize: '11px', marginBottom: '4px' }}>
+                {activity.role} at {activity.organization}
+                {activity.duration && ` (${activity.duration})`}
+                {activity.description && (
+                  <div style={{ 
+                    marginLeft: '15px', 
+                    marginTop: '2px',
+                    wordWrap: 'break-word',
+                    wordBreak: 'break-word',
+                    whiteSpace: 'pre-wrap',
+                    overflowWrap: 'break-word'
+                  }}>
+                    -- {activity.description}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderProfessionalPreview = () => (
     <div style={{
       fontFamily: 'Arial, sans-serif',
       lineHeight: '1.6',
@@ -422,7 +1117,6 @@ const ResumeBuilder: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center'
                 }}>
-                  <span style={{ marginRight: '8px' }}>📍</span>
                   {resume.personal.address || 'Your Location'}
                 </li>
                 <li style={{ 
@@ -432,7 +1126,6 @@ const ResumeBuilder: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center'
                 }}>
-                  <span style={{ marginRight: '8px' }}>📞</span>
                   {resume.personal.phone || 'Your Phone'}
                 </li>
                 <li style={{ 
@@ -442,7 +1135,6 @@ const ResumeBuilder: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center'
                 }}>
-                  <span style={{ marginRight: '8px' }}>✉️</span>
                   {resume.personal.email || 'Your Email'}
                 </li>
                 {resume.personal.linkedin && (
@@ -453,7 +1145,6 @@ const ResumeBuilder: React.FC = () => {
                     display: 'flex',
                     alignItems: 'center'
                   }}>
-                    <span style={{ marginRight: '8px' }}>💼</span>
                     {resume.personal.linkedin}
                   </li>
                 )}
@@ -465,7 +1156,6 @@ const ResumeBuilder: React.FC = () => {
                     display: 'flex',
                     alignItems: 'center'
                   }}>
-                    <span style={{ marginRight: '8px' }}>🔗</span>
                     {resume.personal.github}
                   </li>
                 )}
@@ -490,7 +1180,11 @@ const ResumeBuilder: React.FC = () => {
             <p style={{
               color: '#666',
               fontSize: '14px',
-              lineHeight: '1.5'
+              lineHeight: '1.5',
+              wordWrap: 'break-word',
+              wordBreak: 'break-word',
+              whiteSpace: 'pre-wrap',
+              overflowWrap: 'break-word'
             }}>
               {resume.summary || 'Your professional summary will appear here...'}
             </p>
@@ -553,7 +1247,15 @@ const ResumeBuilder: React.FC = () => {
                   <div style={{ color: '#666', fontSize: '14px', marginTop: '2px' }}>
                     {exp.duration}
                   </div>
-                  <div style={{ color: '#666', fontSize: '14px', marginTop: '2px' }}>
+                  <div style={{ 
+                    color: '#666', 
+                    fontSize: '14px', 
+                    marginTop: '2px',
+                    wordWrap: 'break-word',
+                    wordBreak: 'break-word',
+                    whiteSpace: 'pre-wrap',
+                    overflowWrap: 'break-word'
+                  }}>
                     {exp.description}
                   </div>
                 </div>
@@ -605,7 +1307,15 @@ const ResumeBuilder: React.FC = () => {
                 PROJECTS
               </h2>
               {resume.projects.filter(p => p.title).map((proj, idx) => (
-                <div key={idx} style={{ color: '#666', fontSize: '14px', marginBottom: '5px' }}>
+                <div key={idx} style={{ 
+                  color: '#666', 
+                  fontSize: '14px', 
+                  marginBottom: '5px',
+                  wordWrap: 'break-word',
+                  wordBreak: 'break-word',
+                  whiteSpace: 'pre-wrap',
+                  overflowWrap: 'break-word'
+                }}>
                   <span style={{ color: '#5a6c7d', marginRight: '8px' }}>•</span>
                   <strong>{proj.title}</strong>: {proj.description} [{proj.technologies}]
                   {proj.link && (
@@ -636,7 +1346,15 @@ const ResumeBuilder: React.FC = () => {
                   <span style={{ color: '#5a6c7d', marginRight: '8px' }}>•</span>
                   {cert.title} {cert.date && `(${cert.date})`}
                   {cert.description && (
-                    <div style={{ marginLeft: '16px', marginTop: '2px', fontSize: '13px' }}>
+                    <div style={{ 
+                      marginLeft: '16px', 
+                      marginTop: '2px', 
+                      fontSize: '13px',
+                      wordWrap: 'break-word',
+                      wordBreak: 'break-word',
+                      whiteSpace: 'pre-wrap',
+                      overflowWrap: 'break-word'
+                    }}>
                       {cert.description}
                     </div>
                   )}
@@ -665,7 +1383,15 @@ const ResumeBuilder: React.FC = () => {
                   <span style={{ color: '#5a6c7d', marginRight: '8px' }}>•</span>
                   {activity.role} at {activity.organization} {activity.duration && `(${activity.duration})`}
                   {activity.description && (
-                    <div style={{ marginLeft: '16px', marginTop: '2px', fontSize: '13px' }}>
+                    <div style={{ 
+                      marginLeft: '16px', 
+                      marginTop: '2px', 
+                      fontSize: '13px',
+                      wordWrap: 'break-word',
+                      wordBreak: 'break-word',
+                      whiteSpace: 'pre-wrap',
+                      overflowWrap: 'break-word'
+                    }}>
                       {activity.description}
                     </div>
                   )}
@@ -678,32 +1404,221 @@ const ResumeBuilder: React.FC = () => {
     </div>
   );
 
-  // Save resume data to Supabase (using existing columns)
+  // Save resume data to Supabase with complete data persistence
   const handleSaveResume = async () => {
-    if (!profile?.id) return;
+    if (!profile?.id) {
+      setSaveStatus('⚠ Please log in to save your resume');
+      setTimeout(() => setSaveStatus(null), 3000);
+      return;
+    }
+    
     setLoading(true);
     
-    // Map form data to existing database columns
-    const updateData = {
-      // Personal info is likely stored in other fields or profile table
-      // Education data
-      education: resume.education.filter(e => e.degree).length > 0 ? resume.education : null,
-      // Experience data  
-      experience: resume.experience.filter(e => e.jobTitle).length > 0 ? resume.experience : null,
-      // Projects data
-      projects: resume.projects.filter(p => p.title).length > 0 ? resume.projects : null,
-      // Skills as array
-      skills: resume.skills.filter(s => s) || []
-    };
-    
-    const { error } = await supabase
-      .from('students')
-      .update(updateData)
-      .eq('id', profile.id);
+    try {
+      // Update the students table with ALL resume data
+      const updatePayload: any = {
+        education: resume.education.filter(e => e.degree),
+        experience: resume.experience.filter(e => e.jobTitle),
+        projects: resume.projects.filter(p => p.title),
+        skills: resume.skills.filter(s => s),
+        summary: resume.summary || null,
+      };
+
+      // Add contact info if provided
+      if (resume.personal.phone) updatePayload.phone = resume.personal.phone;
+      if (resume.personal.linkedin) updatePayload.linkedin_url = resume.personal.linkedin;
+      if (resume.personal.github) updatePayload.github_url = resume.personal.github;
+      if (resume.personal.address) updatePayload.address = resume.personal.address;
       
-    setLoading(false);
-    setSaveStatus(error ? 'Error saving resume.' : 'Resume saved!');
-    setTimeout(() => setSaveStatus(null), 3000);
+      // Add certifications/achievements
+      if (resume.achievements.filter(a => a.title).length > 0) {
+        updatePayload.certifications = resume.achievements.filter(a => a.title);
+      }
+
+      const { error: studentError } = await supabase
+        .from('students')
+        .update(updatePayload)
+        .eq('id', profile.id);
+
+      if (studentError) {
+        console.error('Error updating student data:', studentError);
+        throw studentError;
+      }
+
+      // Also update profile table with name and email if changed
+      if (resume.personal.fullName || resume.personal.email) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({
+            full_name: resume.personal.fullName,
+            email: resume.personal.email,
+          })
+          .eq('id', profile.id);
+
+        if (profileError) {
+          console.error('Error updating profile:', profileError);
+        }
+      }
+
+      // Save complete resume to localStorage as persistent backup
+      const resumeBackup = {
+        id: currentResumeId || `resume_${Date.now()}`,
+        student_id: profile.id,
+        resume_data: resume,
+        updated_at: new Date().toISOString()
+      };
+      localStorage.setItem(`resume_${profile.id}`, JSON.stringify(resumeBackup));
+      
+      setSaveStatus('✓ Resume saved successfully!');
+    } catch (error) {
+      console.error('Error saving resume:', error);
+      setSaveStatus('✗ Error saving resume. Please try again.');
+    } finally {
+      setLoading(false);
+      setTimeout(() => setSaveStatus(null), 3000);
+    }
+  };
+
+  // Import data from uploaded resume (extracted by Resume Scanner)
+  const handleImportFromResume = async () => {
+    if (!profile?.id) {
+      setSaveStatus('⚠ Please log in to import data');
+      setTimeout(() => setSaveStatus(null), 3000);
+      return;
+    }
+    
+    setImportingFromResume(true);
+    setSaveStatus('Importing data from uploaded resume...');
+    
+    try {
+      // Fetch the extracted data from the students table
+      const { data: studentData, error } = await supabase
+        .from('students')
+        .select('*')
+        .eq('id', profile.id)
+        .single();
+
+      if (error) throw error;
+
+      if (!studentData?.resume_url) {
+        setSaveStatus('⚠ No resume found. Please upload a resume in Resume Scanner first.');
+        setTimeout(() => setSaveStatus(null), 4000);
+        return;
+      }
+
+      // Fetch profile data for name and email
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('full_name, email, college')
+        .eq('id', profile.id)
+        .single();
+
+      // Map the extracted data to resume format
+      const importedResume = {
+        personal: {
+          fullName: profileData?.full_name || resume.personal.fullName,
+          email: profileData?.email || resume.personal.email,
+          phone: (studentData as any)?.phone || resume.personal.phone,
+          address: (studentData as any)?.address || resume.personal.address,
+          linkedin: (studentData as any)?.linkedin_url || resume.personal.linkedin,
+          github: (studentData as any)?.github_url || resume.personal.github
+        },
+        education: Array.isArray((studentData as any)?.education) && (studentData as any).education.length > 0
+          ? (studentData as any).education.map((edu: any) => ({
+              degree: edu.degree || '',
+              institution: edu.institution || profileData?.college || '',
+              department: edu.department || studentData?.department || '',
+              year: edu.year || '',
+              cgpa: edu.cgpa || studentData?.gpa || ''
+            }))
+          : resume.education,
+        skills: Array.isArray(studentData?.skills) && studentData.skills.length > 0
+          ? studentData.skills
+          : resume.skills,
+        experience: Array.isArray((studentData as any)?.experience) && (studentData as any).experience.length > 0
+          ? (studentData as any).experience.map((exp: any) => {
+              // Handle both string format (from AI extraction) and object format
+              if (typeof exp === 'string') {
+                // Parse string format like "Software Engineer at ABC Company (2020-2022): Description"
+                const match = exp.match(/^(.+?)\s+at\s+(.+?)(?:\s*\(([^)]+)\))?:\s*(.+)$/);
+                if (match) {
+                  return {
+                    jobTitle: match[1].trim(),
+                    company: match[2].trim(),
+                    duration: match[3]?.trim() || '',
+                    description: match[4].trim()
+                  };
+                }
+                // Fallback if format doesn't match
+                return {
+                  jobTitle: '',
+                  company: '',
+                  duration: '',
+                  description: exp
+                };
+              }
+              // Handle object format
+              return {
+                jobTitle: exp.jobTitle || exp.position || '',
+                company: exp.company || '',
+                duration: exp.duration || '',
+                description: exp.description || ''
+              };
+            })
+          : resume.experience,
+        projects: Array.isArray((studentData as any)?.projects) && (studentData as any).projects.length > 0
+          ? (studentData as any).projects.map((proj: any) => {
+              // Handle both string format and object format
+              if (typeof proj === 'string') {
+                // Parse string format like "Project Name: Description [Technologies]"
+                const match = proj.match(/^(.+?):\s*(.+?)(?:\s*\[([^\]]+)\])?$/);
+                if (match) {
+                  return {
+                    title: match[1].trim(),
+                    description: match[2].trim(),
+                    technologies: match[3]?.trim() || '',
+                    link: ''
+                  };
+                }
+                // Fallback
+                return {
+                  title: proj.substring(0, 50),
+                  description: proj,
+                  technologies: '',
+                  link: ''
+                };
+              }
+              // Handle object format
+              return {
+                title: proj.title || '',
+                description: proj.description || '',
+                technologies: proj.technologies || '',
+                link: proj.link || ''
+              };
+            })
+          : resume.projects,
+        achievements: Array.isArray((studentData as any)?.certifications) && (studentData as any).certifications.length > 0
+          ? (studentData as any).certifications.map((cert: any) => ({
+              title: cert.title || cert.name || '',
+              description: cert.description || '',
+              date: cert.date || ''
+            }))
+          : resume.achievements,
+        extracurricular: resume.extracurricular, // Keep existing or empty
+        summary: studentData?.summary || resume.summary
+      };
+
+      setResume(importedResume);
+      setSaveStatus('✓ Successfully imported data from your uploaded resume!');
+      setTimeout(() => setSaveStatus(null), 4000);
+      
+    } catch (error) {
+      console.error('Error importing from resume:', error);
+      setSaveStatus('✗ Failed to import data. Please try again.');
+      setTimeout(() => setSaveStatus(null), 3000);
+    } finally {
+      setImportingFromResume(false);
+    }
   };
 
   return (
@@ -733,10 +1648,89 @@ const ResumeBuilder: React.FC = () => {
             <User className="w-5 h-5 text-green-600 dark:text-green-400" /> Student Details
           </button>
         </nav>
-        <h1 className="text-3xl font-bold mb-6 text-primary">Resume Builder</h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold text-primary">Resume Builder</h1>
+          <div className="flex items-center gap-4">
+            {/* Template Selector */}
+            <div className="flex items-center gap-2 bg-white dark:bg-gray-800 px-4 py-2 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              <Palette className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+              <select
+                value={selectedTemplate}
+                onChange={(e) => setSelectedTemplate(e.target.value as TemplateType)}
+                className="bg-transparent border-none outline-none font-medium text-sm cursor-pointer text-gray-700 dark:text-gray-300"
+              >
+                <option value="professional">Professional Template</option>
+                <option value="ats">ATS-Friendly Template</option>
+              </select>
+            </div>
+            
+            {/* Import from Resume Scanner button */}
+            <button
+              onClick={handleImportFromResume}
+              disabled={importingFromResume || loading}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
+              title="Import data from your uploaded resume"
+            >
+              <Upload className="w-4 h-4" />
+              {importingFromResume ? 'Importing...' : 'Import from Resume'}
+            </button>
+            
+            {saveStatus && (
+              <div className={`text-sm font-medium px-4 py-2 rounded-lg ${
+                saveStatus.includes('✓') 
+                  ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' 
+                  : saveStatus.includes('⚠') || saveStatus.includes('✗')
+                  ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+                  : 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+              }`}>
+                {saveStatus}
+              </div>
+            )}
+          </div>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Form Section */}
           <div>
+            {/* Info Card for Import Feature */}
+            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 mb-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Upload className="w-5 h-5 text-purple-600 dark:text-purple-300" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-purple-900 dark:text-purple-100 mb-1">
+                    💡 Pro Tip: Import from Resume Scanner
+                  </h3>
+                  <p className="text-sm text-purple-700 dark:text-purple-200">
+                    Already uploaded a resume in <Link to="/resume-scanner" className="underline font-medium hover:text-purple-900">Resume Scanner</Link>? 
+                    Click the <strong>"Import from Resume"</strong> button above to automatically fill this form with AI-extracted data from your uploaded resume!
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Template Info Card */}
+            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Palette className="w-5 h-5 text-blue-600 dark:text-blue-300" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                    📋 Choose Your Template
+                  </h3>
+                  <div className="text-sm text-blue-700 dark:text-blue-200 space-y-2">
+                    <div>
+                      <strong>Professional Template:</strong> Modern design with colors and visual elements. Best for creative roles and general applications.
+                    </div>
+                    <div>
+                      <strong>ATS-Friendly Template:</strong> Clean, minimal LaTeX-inspired design optimized for Applicant Tracking Systems. Best for corporate jobs and when passing through automated screening.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
             {/* Personal Info Section */}
             <div className="bg-white rounded shadow p-4 mb-4">
               <h2 className="text-xl font-semibold mb-2">Personal Information</h2>
@@ -773,12 +1767,32 @@ const ResumeBuilder: React.FC = () => {
             <div className="bg-white rounded shadow p-4 mb-4">
               <h2 className="text-xl font-semibold mb-2">Education</h2>
               {resume.education.map((edu, idx) => (
-                <div key={idx} className="grid grid-cols-1 md:grid-cols-5 gap-2 mb-2">
-                  <input type="text" placeholder="Degree" value={edu.degree} onChange={e => handleEducationChange(idx, "degree", e.target.value)} className="input input-bordered" />
-                  <input type="text" placeholder="Institution" value={edu.institution} onChange={e => handleEducationChange(idx, "institution", e.target.value)} className="input input-bordered" />
-                  <input type="text" placeholder="Department" value={edu.department} onChange={e => handleEducationChange(idx, "department", e.target.value)} className="input input-bordered" />
-                  <input type="text" placeholder="Year" value={edu.year} onChange={e => handleEducationChange(idx, "year", e.target.value)} className="input input-bordered" />
-                  <input type="text" placeholder="CGPA" value={edu.cgpa} onChange={e => handleEducationChange(idx, "cgpa", e.target.value)} className="input input-bordered" />
+                <div key={idx} className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
+                  <label className="font-medium">Degree:</label>
+                  <input type="text" placeholder="Degree" value={edu.degree}
+                    onChange={e => handleEducationChange(idx, "degree", e.target.value)}
+                    className="input input-bordered" />
+
+                  <label className="font-medium">Institution:</label>
+                  <input type="text" placeholder="Institution" value={edu.institution}
+                    onChange={e => handleEducationChange(idx, "institution", e.target.value)}
+                    className="input input-bordered" />
+
+                  <label className="font-medium">Department:</label>
+                  <input type="text" placeholder="Department" value={edu.department}
+                    onChange={e => handleEducationChange(idx, "department", e.target.value)}
+                    className="input input-bordered" />
+
+                  <label className="font-medium">Year:</label>
+                  <input type="text" placeholder="Year" value={edu.year}
+                    onChange={e => handleEducationChange(idx, "year", e.target.value)}
+                    className="input input-bordered" />
+
+                  <label className="font-medium">CGPA:</label>
+                  <input type="text" placeholder="CGPA" value={edu.cgpa}
+                    onChange={e => handleEducationChange(idx, "cgpa", e.target.value)}
+                    className="input input-bordered" />
+
                   <button type="button" onClick={() => removeEducation(idx)} className="text-red-500 ml-2">Remove</button>
                 </div>
               ))}
@@ -799,37 +1813,70 @@ const ResumeBuilder: React.FC = () => {
             <div className="bg-white rounded shadow p-4 mb-4">
               <h2 className="text-xl font-semibold mb-2">Experience</h2>
               {resume.experience.map((exp, idx) => (
-                <div key={idx} className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
-                  <input type="text" placeholder="Job Title" value={exp.jobTitle} onChange={e => handleExperienceChange(idx, "jobTitle", e.target.value)} className="input input-bordered" />
-                  <input type="text" placeholder="Company" value={exp.company} onChange={e => handleExperienceChange(idx, "company", e.target.value)} className="input input-bordered" />
-                  <input type="text" placeholder="Duration" value={exp.duration} onChange={e => handleExperienceChange(idx, "duration", e.target.value)} className="input input-bordered" />
-                  <input type="text" placeholder="Description" value={exp.description} onChange={e => handleExperienceChange(idx, "description", e.target.value)} className="input input-bordered" />
-                  <button type="button" onClick={() => removeExperience(idx)} className="text-red-500 ml-2">Remove</button>
+                <div key={idx} className="grid grid-cols-1 gap-2 mb-4 p-3 border rounded">
+                  <label className="font-medium">Job Title:</label>
+                  <input type="text" placeholder="Job Title" value={exp.jobTitle} onChange={e => handleExperienceChange(idx, "jobTitle", e.target.value)} className="input input-bordered w-full" />
+                  
+                  <label className="font-medium">Company:</label>
+                  <input type="text" placeholder="Company" value={exp.company} onChange={e => handleExperienceChange(idx, "company", e.target.value)} className="input input-bordered w-full" />
+                  
+                  <label className="font-medium">Duration:</label>
+                  <input type="text" placeholder="e.g., Jan 2023 - Present" value={exp.duration} onChange={e => handleExperienceChange(idx, "duration", e.target.value)} className="input input-bordered w-full" />
+                  
+                  <label className="font-medium">Description (use Enter for new lines):</label>
+                  <textarea 
+                    placeholder="• Managed a team of 5 developers&#10;• Increased efficiency by 40%&#10;• Led 3 major projects"
+                    value={exp.description} 
+                    onChange={e => handleExperienceChange(idx, "description", e.target.value)} 
+                    className="textarea textarea-bordered w-full h-32" 
+                    rows={4}
+                  />
+                  <p className="text-xs text-gray-500">💡 Tip: Use bullet points (•) or dashes (-) at the start of each line for structured formatting</p>
+                  
+                  <button type="button" onClick={() => removeExperience(idx)} className="text-red-500 mt-2 hover:text-red-700">Remove Experience</button>
                 </div>
               ))}
-              <button type="button" onClick={addExperience} className="mt-2 text-blue-600">+ Add Experience</button>
+              <button type="button" onClick={addExperience} className="mt-2 text-blue-600 hover:text-blue-800 font-medium">+ Add Experience</button>
             </div>
             {/* Projects Section */}
             <div className="bg-white rounded shadow p-4 mb-4">
               <h2 className="text-xl font-semibold mb-2">Projects</h2>
               {resume.projects.map((proj, idx) => (
-                <div key={idx} className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
-                  <input type="text" placeholder="Title" value={proj.title} onChange={e => handleProjectChange(idx, "title", e.target.value)} className="input input-bordered" />
-                  <input type="text" placeholder="Description" value={proj.description} onChange={e => handleProjectChange(idx, "description", e.target.value)} className="input input-bordered" />
-                  <input type="text" placeholder="Technologies" value={proj.technologies} onChange={e => handleProjectChange(idx, "technologies", e.target.value)} className="input input-bordered" />
-                  <input type="text" placeholder="Link" value={proj.link} onChange={e => handleProjectChange(idx, "link", e.target.value)} className="input input-bordered" />
-                  <button type="button" onClick={() => removeProject(idx)} className="text-red-500 ml-2">Remove</button>
+                <div key={idx} className="grid grid-cols-1 gap-2 mb-4 p-3 border rounded">
+                  <label className="font-medium">Title:</label>
+                  <input type="text" placeholder="Project Title" value={proj.title} onChange={e => handleProjectChange(idx, "title", e.target.value)} className="input input-bordered w-full" />
+                  
+                  <label className="font-medium">Description (use Enter for new lines):</label>
+                  <textarea 
+                    placeholder="• Built a web application using React and Node.js&#10;• Implemented user authentication&#10;• Deployed on AWS with 99% uptime"
+                    value={proj.description} 
+                    onChange={e => handleProjectChange(idx, "description", e.target.value)} 
+                    className="textarea textarea-bordered w-full h-32" 
+                    rows={4}
+                  />
+                  <p className="text-xs text-gray-500">💡 Tip: Each line will be displayed as a separate bullet point</p>
+                  
+                  <label className="font-medium">Technologies:</label>
+                  <input type="text" placeholder="React, Node.js, MongoDB" value={proj.technologies} onChange={e => handleProjectChange(idx, "technologies", e.target.value)} className="input input-bordered w-full" />
+                  
+                  <label className="font-medium">Link:</label>
+                  <input type="text" placeholder="https://github.com/username/project" value={proj.link} onChange={e => handleProjectChange(idx, "link", e.target.value)} className="input input-bordered w-full" />
+                  
+                  <button type="button" onClick={() => removeProject(idx)} className="text-red-500 mt-2 hover:text-red-700">Remove Project</button>
                 </div>
               ))}
-              <button type="button" onClick={addProject} className="mt-2 text-blue-600">+ Add Project</button>
+              <button type="button" onClick={addProject} className="mt-2 text-blue-600 hover:text-blue-800 font-medium">+ Add Project</button>
             </div>
             {/* Achievements/Certifications Section */}
             <div className="bg-white rounded shadow p-4 mb-4">
               <h2 className="text-xl font-semibold mb-2">Achievements / Certifications</h2>
               {resume.achievements.map((ach, idx) => (
                 <div key={idx} className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
+                  <label className="font-medium">Title:</label>
                   <input type="text" placeholder="Title" value={ach.title} onChange={e => handleAchievementChange(idx, "title", e.target.value)} className="input input-bordered" />
+                  <label className="font-medium">Description:</label>
                   <input type="text" placeholder="Description" value={ach.description} onChange={e => handleAchievementChange(idx, "description", e.target.value)} className="input input-bordered" />
+                  <label className="font-medium">Date:</label>
                   <input type="text" placeholder="Date" value={ach.date} onChange={e => handleAchievementChange(idx, "date", e.target.value)} className="input input-bordered" />
                   <button type="button" onClick={() => removeAchievement(idx)} className="text-red-500 ml-2">Remove</button>
                 </div>
@@ -840,38 +1887,73 @@ const ResumeBuilder: React.FC = () => {
             <div className="bg-white rounded shadow p-4 mb-4">
               <h2 className="text-xl font-semibold mb-2">Extra-curricular / Volunteer</h2>
               {resume.extracurricular.map((ex, idx) => (
-                <div key={idx} className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
-                  <input type="text" placeholder="Role" value={ex.role} onChange={e => handleExtraChange(idx, "role", e.target.value)} className="input input-bordered" />
-                  <input type="text" placeholder="Organization" value={ex.organization} onChange={e => handleExtraChange(idx, "organization", e.target.value)} className="input input-bordered" />
-                  <input type="text" placeholder="Duration" value={ex.duration} onChange={e => handleExtraChange(idx, "duration", e.target.value)} className="input input-bordered" />
-                  <input type="text" placeholder="Description" value={ex.description} onChange={e => handleExtraChange(idx, "description", e.target.value)} className="input input-bordered" />
-                  <button type="button" onClick={() => removeExtra(idx)} className="text-red-500 ml-2">Remove</button>
+                <div key={idx} className="grid grid-cols-1 gap-2 mb-4 p-3 border rounded">
+                  <label className="font-medium">Role:</label>
+                  <input type="text" placeholder="e.g., President, Volunteer" value={ex.role} onChange={e => handleExtraChange(idx, "role", e.target.value)} className="input input-bordered w-full" />
+                  
+                  <label className="font-medium">Organization:</label>
+                  <input type="text" placeholder="Organization name" value={ex.organization} onChange={e => handleExtraChange(idx, "organization", e.target.value)} className="input input-bordered w-full" />
+                  
+                  <label className="font-medium">Duration:</label>
+                  <input type="text" placeholder="e.g., 2022 - 2024" value={ex.duration} onChange={e => handleExtraChange(idx, "duration", e.target.value)} className="input input-bordered w-full" />
+                  
+                  <label className="font-medium">Description (use Enter for new lines):</label>
+                  <textarea 
+                    placeholder="• Organized 5 community events&#10;• Led team of 10 volunteers&#10;• Raised $5000 for charity"
+                    value={ex.description} 
+                    onChange={e => handleExtraChange(idx, "description", e.target.value)} 
+                    className="textarea textarea-bordered w-full h-24" 
+                    rows={3}
+                  />
+                  <p className="text-xs text-gray-500">💡 Tip: Use bullet points for better formatting</p>
+                  
+                  <button type="button" onClick={() => removeExtra(idx)} className="text-red-500 mt-2 hover:text-red-700">Remove Activity</button>
                 </div>
               ))}
-              <button type="button" onClick={addExtra} className="mt-2 text-blue-600">+ Add Extra-curricular</button>
+              <button type="button" onClick={addExtra} className="mt-2 text-blue-600 hover:text-blue-800 font-medium">+ Add Extra-curricular</button>
             </div>
             {/* Summary Section */}
             <div className="bg-white rounded shadow p-4 mb-4">
               <h2 className="text-xl font-semibold mb-2">Professional Summary</h2>
               <textarea name="summary" value={resume.summary} onChange={e => setResume({ ...resume, summary: e.target.value })} className="input input-bordered w-full" rows={3} />
             </div>
-            <PDFDownloadLink document={<ResumePDF resume={resume} />} fileName="resume.pdf">
-              {({ loading }) => (
-                <button type="button" className="bg-indigo-600 text-white px-6 py-2 rounded shadow font-semibold mb-6 hover:bg-indigo-700 transition">
-                  {loading ? 'Preparing PDF...' : 'Download Resume'}
-                </button>
-              )}
-            </PDFDownloadLink>
-            <button type="button" onClick={handleSaveResume} className="bg-green-600 text-white px-6 py-2 rounded shadow font-semibold mb-6 hover:bg-green-700 transition ml-4">
-              {loading ? 'Saving...' : 'Save Resume'}
-            </button>
-            {saveStatus && <div className="text-sm mt-2 font-medium text-green-700 dark:text-green-400">{saveStatus}</div>}
           </div>
           {/* Preview Section */}
-          <div className="sticky top-8">
+          <div className="sticky top-4 self-start" style={{ maxHeight: 'calc(100vh - 2rem)', overflowY: 'auto' }}>
             <div className="bg-gray-50 dark:bg-gray-800 rounded shadow p-4 mb-4">
-              <h2 className="text-xl font-semibold mb-2 text-indigo-700 dark:text-indigo-400">Resume Preview</h2>
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-xl font-semibold text-indigo-700 dark:text-indigo-400">Resume Preview</h2>
+                <div className="flex items-center gap-2 text-sm">
+                  <Palette className="w-4 h-4 text-gray-500" />
+                  <span className="text-gray-600 dark:text-gray-400">
+                    {selectedTemplate === 'professional' ? 'Professional' : 'ATS-Friendly'}
+                  </span>
+                </div>
+              </div>
               {renderPreview()}
+            <div className="p-2 flex gap-4 items-center">
+              <PDFDownloadLink 
+                document={selectedTemplate === 'professional' ? <ResumePDF resume={resume} /> : <ATSResumePDF resume={resume} />} 
+                fileName={`resume_${selectedTemplate}.pdf`}
+              >
+                {({ loading: pdfLoading }) => (
+                  <button type="button" className="w-full p-2 rounded gradient-primary text-white">
+                    {pdfLoading ? 'Preparing PDF...' : `Download ${selectedTemplate === 'professional' ? 'Professional' : 'ATS'} Resume`}
+                  </button>
+                )}
+              </PDFDownloadLink>
+              {/* <button 
+                type="button" 
+                onClick={handleSaveResume} 
+                disabled={loading}
+                className="bg-green-600 text-white px-6 py-2 rounded shadow font-semibold hover:bg-green-700 transition disabled:opacity-50"
+              >
+                {loading ? 'Saving...' : 'Save Resume'}
+              </button> */}
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                Auto-save
+              </span>
+            </div>
             </div>
           </div>
         </div>
