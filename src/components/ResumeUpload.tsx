@@ -110,19 +110,42 @@ const ResumeUpload = ({ onUploadSuccess, hasExistingResume = false }: ResumeUplo
         resume_url: data.publicUrl
       });
 
-      // --- NEW: Call FastAPI to embed resume and update resume_embedding ---
+      // --- NEW: Call FastAPI to embed resume and extract data for resume builder ---
       const formData = new FormData();
       formData.append('student_id', user.id);
       formData.append('file', selectedFile);
 
-      const response = await fetch('http://localhost:8000/embed-resume/', {
+      // First, extract resume for builder
+      const extractResponse = await fetch('http://localhost:8000/extract-resume-for-builder/', {
         method: 'POST',
         body: formData
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || 'Embedding failed.');
+      if (!extractResponse.ok) {
+        console.warn('Resume extraction for builder failed, continuing with embedding...');
+      } else {
+        const extractData = await extractResponse.json();
+        console.log('✅ Resume extracted for builder:', extractData);
+        toast({
+          title: "Resume Extracted!",
+          description: `Found ${extractData.extraction_stats?.skills_found || 0} skills, ${extractData.extraction_stats?.projects_found || 0} projects`,
+        });
+      }
+
+      // Then, embed resume for matching
+      const formData2 = new FormData();
+      formData2.append('student_id', user.id);
+      formData2.append('file', selectedFile);
+
+      const embedResponse = await fetch('http://localhost:8000/embed-resume/', {
+        method: 'POST',
+        body: formData2
+      });
+
+      if (!embedResponse.ok) {
+        const errorData = await embedResponse.json().catch(() => ({}));
+        console.error('Embedding failed:', errorData);
+        // Don't throw error, just log it
       }
       // --- END NEW ---
       

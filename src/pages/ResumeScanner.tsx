@@ -74,10 +74,20 @@ const generateLearningPath = (currentSkills: string[]): string[] => {
 
 const ResumeScanner = () => {
   const { signOut, profile, user } = useAuth();
-  const { data: studentData, isLoading: studentLoading } = useStudentData();
+  const { data: studentData, isLoading: studentLoading, error: studentError } = useStudentData();
   const updateStudentMutation = useUpdateStudentData();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('ResumeScanner mounted');
+    console.log('User:', user);
+    console.log('Profile:', profile);
+    console.log('Student Data:', studentData);
+    console.log('Student Loading:', studentLoading);
+    console.log('Student Error:', studentError);
+  }, [user, profile, studentData, studentLoading, studentError]);
   
   const [extractedData, setExtractedData] = useState<ExtractedData>({
     skills: [],
@@ -97,6 +107,29 @@ const ResumeScanner = () => {
   const [isExtracting, setIsExtracting] = useState(false);
   const [hasResume, setHasResume] = useState(false);
 
+  // Helper function to convert project/experience objects to strings
+  // This is needed because the backend returns structured objects for Resume Builder,
+  // but Resume Scanner needs to display them as strings
+  const convertToStringArray = (arr: any[]): string[] => {
+    if (!Array.isArray(arr)) return [];
+    return arr.map(item => {
+      if (typeof item === 'string') return item;
+      if (typeof item === 'object' && item !== null) {
+        // If it's a project object
+        if (item.title) {
+          return `${item.title}${item.technologies ? ` [${item.technologies}]` : ''}${item.description ? `: ${item.description}` : ''}${item.link ? ` (${item.link})` : ''}`;
+        }
+        // If it's an experience object
+        if (item.jobTitle) {
+          return `${item.jobTitle} at ${item.company || ''}${item.duration ? ` (${item.duration})` : ''}${item.description ? `: ${item.description}` : ''}`;
+        }
+        // Fallback: convert to JSON string
+        return JSON.stringify(item);
+      }
+      return String(item);
+    });
+  };
+
   useEffect(() => {
     if (studentData) {
       setHasResume(!!studentData.resume_url);
@@ -104,11 +137,11 @@ const ResumeScanner = () => {
       // Only load data if it actually exists in the database
       const extractedData = {
         skills: Array.isArray(studentData.skills) && studentData.skills.length > 0 ? studentData.skills as string[] : [],
-        projects: Array.isArray(studentData.projects) && studentData.projects.length > 0 ? studentData.projects as string[] : [],
-        experience: Array.isArray(studentData.experience) && studentData.experience.length > 0 ? studentData.experience as string[] : [],
+        projects: convertToStringArray((studentData.projects || []) as any[]),
+        experience: convertToStringArray((studentData.experience || []) as any[]),
         cgpa: studentData.gpa || '',
-        tenthMark: studentData.tenth_percentage?.toString() || '',
-        twelfthMark: studentData.twelfth_percentage?.toString() || ''
+        tenthMark: (studentData as any).tenth_percentage?.toString() || '',
+        twelfthMark: (studentData as any).twelfth_percentage?.toString() || ''
       };
       
       // Only set extracted data if there's actual data from the database
@@ -205,8 +238,8 @@ const ResumeScanner = () => {
           // Use the real extracted data from the backend
           const realExtractedData: ExtractedData = {
             skills: Array.isArray(updatedStudentData.skills) ? updatedStudentData.skills as string[] : [],
-            projects: Array.isArray(updatedStudentData.projects) ? updatedStudentData.projects as string[] : [],
-            experience: Array.isArray(updatedStudentData.experience) ? updatedStudentData.experience as string[] : [],
+            projects: convertToStringArray((updatedStudentData.projects || []) as any[]),
+            experience: convertToStringArray((updatedStudentData.experience || []) as any[]),
             cgpa: updatedStudentData.gpa || '',
             tenthMark: (updatedStudentData as any).tenth_percentage || '',
             twelfthMark: (updatedStudentData as any).twelfth_percentage || ''
@@ -295,8 +328,8 @@ const ResumeScanner = () => {
         if (freshData && !error) {
           const refreshedData: ExtractedData = {
             skills: Array.isArray(freshData.skills) ? freshData.skills as string[] : [],
-            projects: Array.isArray(freshData.projects) ? freshData.projects as string[] : [],
-            experience: Array.isArray(freshData.experience) ? freshData.experience as string[] : [],
+            projects: convertToStringArray((freshData.projects || []) as any[]),
+            experience: convertToStringArray((freshData.experience || []) as any[]),
             cgpa: freshData.gpa || '',
             tenthMark: (freshData as any).tenth_percentage || '',
             twelfthMark: (freshData as any).twelfth_percentage || ''
@@ -339,6 +372,18 @@ const ResumeScanner = () => {
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
           <p className="mt-4 text-muted-foreground">Loading your profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (studentError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 flex items-center justify-center">
+        <div className="text-center p-6">
+          <div className="text-red-500 text-xl mb-4">⚠️ Error Loading Profile</div>
+          <p className="text-muted-foreground mb-4">{(studentError as Error)?.message || 'Unknown error'}</p>
+          <Button onClick={() => window.location.reload()}>Reload Page</Button>
         </div>
       </div>
     );
@@ -517,28 +562,32 @@ const ResumeScanner = () => {
                     </div>
 
                     {/* Projects */}
-                    <div>
-                      <Label className="text-sm font-medium mb-2 block">Projects</Label>
-                      <div className="space-y-2">
-                        {extractedData.projects.map((project, index) => (
-                          <div key={index} className="p-3 bg-muted/50 rounded-lg">
-                            <p className="text-sm">{project}</p>
-                          </div>
-                        ))}
+                    {extractedData.projects.length > 0 && (
+                      <div>
+                        <Label className="text-sm font-medium mb-2 block">Projects</Label>
+                        <div className="space-y-2">
+                          {extractedData.projects.map((project, index) => (
+                            <div key={index} className="p-3 bg-muted/50 rounded-lg">
+                              <p className="text-sm">{project}</p>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* Experience */}
-                    <div>
-                      <Label className="text-sm font-medium mb-2 block">Experience</Label>
-                      <div className="space-y-2">
-                        {extractedData.experience.map((exp, index) => (
-                          <div key={index} className="p-3 bg-muted/50 rounded-lg">
-                            <p className="text-sm">{exp}</p>
-                          </div>
-                        ))}
+                    {extractedData.experience.length > 0 && (
+                      <div>
+                        <Label className="text-sm font-medium mb-2 block">Experience</Label>
+                        <div className="space-y-2">
+                          {extractedData.experience.map((exp, index) => (
+                            <div key={index} className="p-3 bg-muted/50 rounded-lg">
+                              <p className="text-sm">{exp}</p>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* Comment out the old save button since we auto-save now */}
                     {/* <Button onClick={saveExtractedData} className="w-full gradient-primary text-white">

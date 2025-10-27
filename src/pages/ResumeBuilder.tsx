@@ -548,6 +548,63 @@ const ResumeBuilder: React.FC = () => {
           }
         }
 
+        // Check if resume_form_data exists in students table (from resume extraction)
+        const { data: studentDataCheck } = await supabase
+          .from('students')
+          .select('resume_form_data')
+          .eq('id', profile.id)
+          .single();
+
+        if ((studentDataCheck as any)?.resume_form_data) {
+          console.log('✅ Found extracted resume data, loading...');
+          const extractedResumeData = (studentDataCheck as any).resume_form_data;
+          
+          // Merge with any existing profile data
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('full_name, email, college')
+            .eq('id', profile.id)
+            .single();
+
+          // Apply extracted data with fallbacks to profile data
+          const mergedResumeData = {
+            personal: {
+              fullName: extractedResumeData.personal?.fullName || profileData?.full_name || '',
+              email: extractedResumeData.personal?.email || profileData?.email || '',
+              phone: extractedResumeData.personal?.phone || '',
+              address: extractedResumeData.personal?.address || '',
+              linkedin: extractedResumeData.personal?.linkedin || '',
+              github: extractedResumeData.personal?.github || ''
+            },
+            education: extractedResumeData.education && extractedResumeData.education.length > 0
+              ? extractedResumeData.education
+              : [{ degree: '', institution: profileData?.college || '', department: '', year: '', cgpa: '' }],
+            skills: extractedResumeData.skills && extractedResumeData.skills.length > 0
+              ? extractedResumeData.skills
+              : [''],
+            experience: extractedResumeData.experience && extractedResumeData.experience.length > 0
+              ? extractedResumeData.experience
+              : [{ jobTitle: '', company: '', duration: '', description: '' }],
+            projects: extractedResumeData.projects && extractedResumeData.projects.length > 0
+              ? extractedResumeData.projects
+              : [{ title: '', description: '', technologies: '', link: '' }],
+            achievements: extractedResumeData.achievements && extractedResumeData.achievements.length > 0
+              ? extractedResumeData.achievements
+              : [{ title: '', description: '', date: '' }],
+            extracurricular: extractedResumeData.extracurricular && extractedResumeData.extracurricular.length > 0
+              ? extractedResumeData.extracurricular
+              : [{ role: '', organization: '', duration: '', description: '' }],
+            summary: extractedResumeData.summary || ''
+          };
+
+          setResume(mergedResumeData);
+          setSaveStatus('✓ Loaded resume from scanner');
+          setTimeout(() => setSaveStatus(null), 3000);
+          setLoading(false);
+          setAutoSaveEnabled(true);
+          return;
+        }
+
         // Fetch profile data (includes full_name, email, college, etc.)
         const { data: profileData } = await supabase
           .from('profiles')

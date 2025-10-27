@@ -664,6 +664,402 @@ async def test_ollama():
             "error": str(e)
         }, status_code=500)
 
+@app.post("/extract-resume-for-builder/")
+async def extract_resume_for_builder(
+    student_id: str = Form(...),
+    file: UploadFile = File(...)
+):
+    """
+    Extract resume data and format it specifically for the Resume Builder.
+    Returns structured JSON that can be directly used in the Resume Builder template.
+    """
+    print(f"Extracting resume for builder - Student: {student_id}")
+    print(f"File: {file.filename}")
+    
+    try:
+        # 1. Read PDF
+        file_bytes = await file.read()
+        text = extract_text_from_pdf(file_bytes)
+        
+        if not text.strip():
+            return JSONResponse({
+                "status": "error",
+                "message": "No text found in PDF"
+            }, status_code=400)
+        
+        print(f"Extracted text: {len(text)} characters")
+        
+        # 2. Extract all information
+        skills = extract_skills_from_text(text)
+        projects_raw = extract_projects_from_text(text)
+        experience_raw = extract_experience_from_text(text)
+        academic_info = extract_academic_info(text)
+        
+        # 3. Extract personal information using regex patterns
+        personal_info = extract_personal_info_from_text(text)
+        
+        # 4. Extract education details
+        education_details = extract_education_details(text)
+        
+        # 5. Format projects for resume builder
+        projects = []
+        for proj_text in projects_raw[:5]:  # Top 5 projects
+            project_data = parse_project_text(proj_text)
+            projects.append(project_data)
+        
+        # 6. Format experience for resume builder
+        experiences = []
+        for exp_text in experience_raw[:5]:  # Top 5 experiences
+            exp_data = parse_experience_text(exp_text)
+            experiences.append(exp_data)
+        
+        # 7. Extract certifications/achievements
+        certifications = extract_certifications_from_text(text)
+        
+        # 8. Extract summary
+        summary = extract_summary_from_text(text)
+        
+        # 9. Structure the data for Resume Builder
+        resume_builder_data = {
+            "personal": {
+                "fullName": personal_info.get("name", ""),
+                "email": personal_info.get("email", ""),
+                "phone": personal_info.get("phone", ""),
+                "address": personal_info.get("address", ""),
+                "linkedin": personal_info.get("linkedin", ""),
+                "github": personal_info.get("github", "")
+            },
+            "education": education_details if education_details else [{
+                "degree": "",
+                "institution": "",
+                "department": "",
+                "year": "",
+                "cgpa": str(academic_info.get("cgpa", "")) if academic_info.get("cgpa") else ""
+            }],
+            "skills": skills if skills else [""],
+            "experience": experiences if experiences else [{
+                "jobTitle": "",
+                "company": "",
+                "duration": "",
+                "description": ""
+            }],
+            "projects": projects if projects else [{
+                "title": "",
+                "description": "",
+                "technologies": "",
+                "link": ""
+            }],
+            "achievements": certifications if certifications else [{
+                "title": "",
+                "description": "",
+                "date": ""
+            }],
+            "extracurricular": [{
+                "role": "",
+                "organization": "",
+                "duration": "",
+                "description": ""
+            }],  # Default empty structure matching Resume Builder format
+            "summary": summary
+        }
+        
+        # 10. Store in Supabase for persistence
+        try:
+            # Store the structured resume data
+            update_data = {
+                "resume_form_data": resume_builder_data,  # Changed from resume_builder_data to resume_form_data
+                "skills": skills,
+                "projects": [p["title"] for p in projects if p.get("title")],
+                "experience": [e["jobTitle"] for e in experiences if e.get("jobTitle")],
+                "summary": summary
+            }
+            
+            if academic_info.get("cgpa"):
+                update_data["gpa"] = str(academic_info["cgpa"])
+            if academic_info.get("tenth_percentage"):
+                update_data["tenth_percentage"] = academic_info["tenth_percentage"]
+            if academic_info.get("twelfth_percentage"):
+                update_data["twelfth_percentage"] = academic_info["twelfth_percentage"]
+            
+            supabase.table("students").update(update_data).eq("id", student_id).execute()
+            print("✅ Stored resume form data in Supabase (resume_form_data column)")
+            
+        except Exception as db_error:
+            print(f"⚠️ Database storage failed: {db_error}")
+            # Continue even if database fails
+        
+        return JSONResponse({
+            "status": "success",
+            "message": "Resume extracted successfully",
+            "resume_data": resume_builder_data,
+            "extraction_stats": {
+                "skills_found": len(skills),
+                "projects_found": len(projects),
+                "experiences_found": len(experiences),
+                "certifications_found": len(certifications),
+                "has_personal_info": bool(personal_info.get("name") or personal_info.get("email")),
+                "has_education": bool(education_details),
+                "has_summary": bool(summary)
+            }
+        })
+        
+    except Exception as e:
+        print(f"❌ Resume extraction failed: {e}")
+        traceback.print_exc()
+        return JSONResponse({
+            "status": "error",
+            "message": f"Failed to extract resume: {str(e)}"
+        }, status_code=500)
+
+
+def extract_personal_info_from_text(text: str) -> dict:
+    """Extract personal information like name, email, phone, etc."""
+    info = {}
+    
+    # Extract email
+    email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+    emails = re.findall(email_pattern, text)
+    if emails:
+        info["email"] = emails[0]
+    
+    # Extract phone
+    phone_patterns = [
+        r'\+?\d{1,3}[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}',
+        r'\d{10}',
+        r'\+91[-.\s]?\d{10}'
+    ]
+    for pattern in phone_patterns:
+        phones = re.findall(pattern, text)
+        if phones:
+            info["phone"] = phones[0]
+            break
+    
+    # Extract LinkedIn
+    linkedin_pattern = r'linkedin\.com/in/[\w-]+'
+    linkedin = re.search(linkedin_pattern, text.lower())
+    if linkedin:
+        info["linkedin"] = linkedin.group()
+    
+    # Extract GitHub
+    github_pattern = r'github\.com/[\w-]+'
+    github = re.search(github_pattern, text.lower())
+    if github:
+        info["github"] = github.group()
+    
+    # Extract name (usually in first few lines, capitalized)
+    lines = text.split('\n')[:10]
+    for line in lines:
+        line = line.strip()
+        # Name is typically 2-4 words, capitalized, at the top
+        if len(line.split()) >= 2 and len(line.split()) <= 4:
+            if line[0].isupper() and not any(char.isdigit() for char in line):
+                if len(line) > 5 and len(line) < 50:
+                    info["name"] = line
+                    break
+    
+    # Extract address (look for city, state patterns)
+    address_patterns = [
+        r'[A-Za-z\s]+,\s*[A-Za-z\s]+\s*-?\s*\d{6}',
+        r'[A-Za-z\s]+,\s*[A-Za-z\s]+\s+\d{5,6}'
+    ]
+    for pattern in address_patterns:
+        addresses = re.findall(pattern, text)
+        if addresses:
+            info["address"] = addresses[0]
+            break
+    
+    return info
+
+
+def extract_education_details(text: str) -> list:
+    """Extract detailed education information"""
+    education_list = []
+    
+    # Look for education section
+    education_section_pattern = r'(?i)education[:\s]*\n(.*?)(?=\n\s*[A-Z][^:\n]*:|$)'
+    matches = re.findall(education_section_pattern, text, re.DOTALL)
+    
+    if matches:
+        education_text = matches[0]
+        
+        # Extract degree patterns
+        degree_patterns = [
+            r'(B\.?Tech|Bachelor|B\.?E\.?|B\.?Sc|BCA|MCA|M\.?Tech|Master|M\.?E\.?|M\.?Sc)\s+(?:in\s+)?([A-Za-z\s]+?)(?:\s+from\s+|\s+at\s+|\s+-\s+)([A-Za-z\s,\.]+?)(?:\s+\(?(\d{4})[^\d])',
+            r'([A-Za-z\s\.]+?)\s+(?:from|at)\s+([A-Za-z\s,\.]+?)\s+\(?(\d{4})'
+        ]
+        
+        for pattern in degree_patterns:
+            degree_matches = re.findall(pattern, education_text, re.IGNORECASE)
+            for match in degree_matches:
+                if len(match) >= 3:
+                    edu = {
+                        "degree": match[0].strip() if len(match) > 0 else "",
+                        "department": match[1].strip() if len(match) > 1 else "",
+                        "institution": match[2].strip() if len(match) > 2 else "",
+                        "year": match[3].strip() if len(match) > 3 else "",
+                        "cgpa": ""
+                    }
+                    
+                    # Try to find CGPA near this education entry
+                    cgpa_pattern = r'(?:cgpa|gpa)[:\s]*(\d+\.?\d*)'
+                    cgpa_match = re.search(cgpa_pattern, education_text[max(0, education_text.find(match[0])-100):education_text.find(match[0])+200], re.IGNORECASE)
+                    if cgpa_match:
+                        edu["cgpa"] = cgpa_match.group(1)
+                    
+                    education_list.append(edu)
+    
+    return education_list[:3]  # Return top 3 education entries
+
+
+def parse_project_text(project_text: str) -> dict:
+    """Parse project text into structured format"""
+    project = {
+        "title": "",
+        "description": "",
+        "technologies": "",
+        "link": ""
+    }
+    
+    # Extract title (usually first line or before colon)
+    lines = project_text.split('\n')
+    if lines:
+        first_line = lines[0].strip()
+        # Title is usually before colon or dash
+        if ':' in first_line:
+            project["title"] = first_line.split(':')[0].strip()
+            project["description"] = first_line.split(':', 1)[1].strip()
+        elif '-' in first_line and len(first_line.split('-')[0]) < 50:
+            project["title"] = first_line.split('-')[0].strip()
+            project["description"] = first_line.split('-', 1)[1].strip()
+        else:
+            # Take first 50 chars as title
+            project["title"] = first_line[:50]
+            project["description"] = project_text
+    
+    # Extract technologies (look for tech keywords in brackets or after "using")
+    tech_pattern = r'\[(.*?)\]|(?:using|technologies?:?)\s*([A-Za-z\s,/+.-]+?)(?:\.|$)'
+    tech_matches = re.findall(tech_pattern, project_text, re.IGNORECASE)
+    if tech_matches:
+        techs = []
+        for match in tech_matches:
+            tech = match[0] if match[0] else match[1]
+            if tech:
+                techs.append(tech.strip())
+        project["technologies"] = ", ".join(techs)
+    
+    # Extract link (URL pattern)
+    url_pattern = r'https?://[^\s]+'
+    urls = re.findall(url_pattern, project_text)
+    if urls:
+        project["link"] = urls[0]
+    
+    # Clean up description
+    if not project["description"]:
+        project["description"] = project_text.strip()
+    
+    return project
+
+
+def parse_experience_text(exp_text: str) -> dict:
+    """Parse experience text into structured format"""
+    experience = {
+        "jobTitle": "",
+        "company": "",
+        "duration": "",
+        "description": ""
+    }
+    
+    # Extract job title and company (pattern: "Job Title at Company")
+    at_pattern = r'([A-Za-z\s]+?)\s+at\s+([A-Za-z\s&\.]+?)(?:\s*[\(,]|\s*$)'
+    at_match = re.search(at_pattern, exp_text, re.IGNORECASE)
+    
+    if at_match:
+        experience["jobTitle"] = at_match.group(1).strip()
+        experience["company"] = at_match.group(2).strip()
+    
+    # Extract duration (date patterns)
+    duration_patterns = [
+        r'(\d{4}\s*-\s*\d{4})',
+        r'(\d{4}\s*-\s*Present)',
+        r'((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}\s*-\s*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4})',
+        r'((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}\s*-\s*Present)',
+        r'\(([^)]*\d{4}[^)]*)\)'
+    ]
+    
+    for pattern in duration_patterns:
+        duration_match = re.search(pattern, exp_text, re.IGNORECASE)
+        if duration_match:
+            experience["duration"] = duration_match.group(1).strip()
+            break
+    
+    # Description is the full text
+    experience["description"] = exp_text.strip()
+    
+    return experience
+
+
+def extract_certifications_from_text(text: str) -> list:
+    """Extract certifications and achievements"""
+    certifications = []
+    
+    # Look for certification section
+    cert_patterns = [
+        r'(?i)(?:certifications?|achievements?|awards?)[:\s]*\n(.*?)(?=\n\s*[A-Z][^:\n]*:|$)',
+    ]
+    
+    for pattern in cert_patterns:
+        matches = re.findall(pattern, text, re.DOTALL)
+        for match in matches:
+            # Split by bullets or newlines
+            cert_lines = re.split(r'[•\-\*]\s*|(?:\n\s*)+', match.strip())
+            
+            for line in cert_lines:
+                line = line.strip()
+                if len(line) > 10:
+                    # Extract date if present
+                    date_pattern = r'[\(\[]?(\d{4}|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4})[\)\]]?'
+                    date_match = re.search(date_pattern, line)
+                    
+                    cert = {
+                        "title": line,
+                        "description": "",
+                        "date": date_match.group(1) if date_match else ""
+                    }
+                    
+                    # Remove date from title
+                    if date_match:
+                        cert["title"] = line.replace(date_match.group(0), "").strip()
+                    
+                    certifications.append(cert)
+    
+    return certifications[:5]  # Top 5 certifications
+
+
+def extract_summary_from_text(text: str) -> str:
+    """Extract professional summary"""
+    summary_patterns = [
+        r'(?i)(?:summary|objective|profile)[:\s]*\n(.*?)(?=\n\s*[A-Z][^:\n]*:|$)',
+        r'(?i)(?:about me|introduction)[:\s]*\n(.*?)(?=\n\s*[A-Z][^:\n]*:|$)'
+    ]
+    
+    for pattern in summary_patterns:
+        matches = re.findall(pattern, text, re.DOTALL)
+        if matches:
+            summary = matches[0].strip()
+            # Clean up and return first paragraph
+            paragraphs = summary.split('\n\n')
+            if paragraphs:
+                return paragraphs[0].strip()[:500]  # Max 500 chars
+    
+    # If no summary section found, generate from first few lines
+    lines = text.split('\n')[:20]
+    for i, line in enumerate(lines):
+        if len(line.strip()) > 50 and not any(keyword in line.lower() for keyword in ['email', 'phone', 'linkedin', 'github', 'address']):
+            return line.strip()[:300]
+    
+    return ""
+
+
 @app.post("/embed-resume/")
 async def embed_resume(
     student_id: str = Form(...),
