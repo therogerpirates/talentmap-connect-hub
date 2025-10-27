@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { BookOpen, Upload, FileText, CheckCircle, LogOut, Sparkles, Lightbulb, Target, TrendingUp, Award, GraduationCap, BookMarked } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useHiringSessions, HiringSession } from '@/hooks/useHiringSessions';
 import ResumeUpload from '@/components/ResumeUpload';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudentData, useUpdateStudentData } from '@/hooks/useStudentData';
@@ -106,6 +107,7 @@ const ResumeScanner = () => {
   
   const [isExtracting, setIsExtracting] = useState(false);
   const [hasResume, setHasResume] = useState(false);
+  const { data: sessions, isLoading: sessionsLoading } = useHiringSessions();
 
   // Helper function to convert project/experience objects to strings
   // This is needed because the backend returns structured objects for Resume Builder,
@@ -366,6 +368,64 @@ const ResumeScanner = () => {
     }
   };
 
+  // Helper to compute missing skills for a given hiring session
+  const computeMissingSkills = (required: any[] | undefined, studentSkills: string[]) => {
+    try {
+      if (!Array.isArray(required) || required.length === 0) return [] as string[];
+      const studentLower = (studentSkills || []).map(s => String(s).toLowerCase().trim());
+      // Normalize required skills to strings
+      const reqSkills = required.map((r: any) => typeof r === 'string' ? r : String(r)).filter(Boolean) as string[];
+      const missing = reqSkills.filter(rs => !studentLower.includes(rs.toLowerCase().trim()));
+      return missing;
+    } catch (e) {
+      console.warn('Error computing missing skills', e);
+      return [] as string[];
+    }
+  };
+
+  // LLM suggestions state
+  const [llmSuggestions, setLlmSuggestions] = useState<Record<string, string>>({});
+  const [llmLoading, setLlmLoading] = useState<Record<string, boolean>>({});
+
+  // Fetch concise LLM suggestion for a session using a local backend endpoint
+  const fetchLLMSuggestion = async (session: HiringSession) => {
+    if (!session || !user?.id) return;
+    // Avoid duplicate requests
+    if (llmLoading[session.id]) return;
+
+    setLlmLoading(prev => ({ ...prev, [session.id]: true }));
+    try {
+      const payload = {
+        session_id: session.id,
+        required_skills: session?.requirements?.required_skills || [],
+        student_skills: extractedData.skills || [],
+        description: session.description || '',
+        // Instructions: concise, 2-4 short bullets, no filler words like 'here' or 'absolutely'
+        instructions: 'Provide 2 short bullets: 1) Improvements the student should make; 2) What to focus on now. Keep it very short, direct, and avoid filler words.'
+      };
+
+      const res = await fetch('http://localhost:8000/session-llm-suggestions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        throw new Error(`LLM request failed: ${res.status}`);
+      }
+
+      const data = await res.json();
+      // Expecting { suggestion: string }
+      const suggestion = typeof data === 'string' ? data : data?.suggestion || data?.result || '';
+      setLlmSuggestions(prev => ({ ...prev, [session.id]: suggestion }));
+    } catch (err) {
+      console.error('LLM suggestion error', err);
+      setLlmSuggestions(prev => ({ ...prev, [session.id]: 'Unable to fetch suggestion' }));
+    } finally {
+      setLlmLoading(prev => ({ ...prev, [session.id]: false }));
+    }
+  };
+
   if (studentLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 flex items-center justify-center">
@@ -603,6 +663,69 @@ const ResumeScanner = () => {
               </div>
             )}
           </div>
+
+          {/* Sessions & Missing Skills Section */}
+          {sessions && sessions.length > 0 && extractedData.skills.length > 0 && (
+            <div className="mt-8 space-y-6">
+              <div className="text-center mb-4">
+                <h2 className="text-2xl font-bold gradient-primary bg-clip-text text-transparent mb-1">Relevant Sessions — Missing Skills</h2>
+                <p className="text-sm text-muted-foreground">See which skills are missing from your profile for upcoming sessions</p>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                {sessions.map((session: HiringSession) => {
+                  const requiredSkills = session?.requirements?.required_skills || [];
+                  const missing = computeMissingSkills(requiredSkills, extractedData.skills || []);
+
+                  return (
+                    <Card key={session.id} className="glass-panel">
+                      <CardHeader>
+                        <CardTitle className="flex items-center justify-between">
+                          <span className="font-medium">{session.title}</span>
+                          <span className="text-sm text-muted-foreground">{session.role}</span>
+                        </CardTitle>
+                        <div className="mt-1 text-xs text-muted-foreground">{session.status}</div>
+                      </CardHeader>
+                      <CardContent>
+                        {Array.isArray(requiredSkills) && requiredSkills.length > 0 ? (
+                          <div className="space-y-2">
+                            <div className="text-sm font-medium text-muted-foreground">Missing Skills</div>
+                            <div className="flex flex-wrap gap-2">
+                              {missing.length > 0 ? (
+                                missing.map((m, idx) => (
+                                  <Badge key={idx} variant="outline" className="bg-destructive/5 text-destructive">{m}</Badge>
+                                ))
+                              ) : (
+                                <Badge variant="secondary" className="bg-green-50 text-green-700">All required skills matched</Badge>
+                              )}
+                            </div>
+                            <div className="mt-3">
+                              <Button
+                                variant="outline"
+                                className="text-sm"
+                                onClick={() => fetchLLMSuggestion(session)}
+                                disabled={!!llmLoading[session.id]}
+                              >
+                                {llmLoading[session.id] ? 'Thinking...' : 'LLM Suggestion'}
+                              </Button>
+
+                              {llmSuggestions[session.id] && (
+                                <div className="mt-2 p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
+                                  {llmSuggestions[session.id]}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-sm text-muted-foreground">No required skills listed for this session.</div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* AI Suggestions Section */}
           {aiSuggestions.resumeImprovements.length > 0 && (

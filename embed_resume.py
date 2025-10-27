@@ -664,6 +664,122 @@ async def test_ollama():
             "error": str(e)
         }, status_code=500)
 
+
+@app.post("/session-llm-suggestions")
+async def session_llm_suggestions(request: Request):
+    """
+    Generate a concise LLM suggestion for a hiring session given:
+    - session_id
+    - required_skills (list)
+    - student_skills (list)
+    - description (string)
+    - instructions (optional string)
+
+    The endpoint will attempt to call Groq if configured; otherwise it falls back
+    to a small heuristic generator. The final suggestion string is stored under
+    the session's `requirements.llm_suggestion` key in the `hiring_sessions` table.
+    """
+    try:
+        payload = await request.json()
+    except Exception as e:
+        return JSONResponse({"status": "error", "message": "Invalid JSON"}, status_code=400)
+
+    session_id = payload.get('session_id')
+    required_skills = payload.get('required_skills', []) or []
+    student_skills = payload.get('student_skills', []) or []
+    description = payload.get('description', '') or ''
+    instructions = payload.get('instructions', '') or (
+        "Provide 2 short bullets: 1) Improvements the student should make; 2) What to focus on now. "
+        "Keep it very short, direct, and avoid filler words like 'here' or 'absolutely'."
+    )
+
+    if not session_id:
+        return JSONResponse({"status": "error", "message": "session_id is required"}, status_code=400)
+
+    # Build messages for Groq (if available)
+    system_msg = (
+        "You are an expert career coach. Produce exactly 2 very short bullet points. "
+        "1) Improvements the student should make; 2) What to focus on now. Be direct and concise. "
+        "Avoid any filler or lead-in phrases. Return plain text with one bullet per line."
+    )
+
+    user_parts = [f"Job description: {description}" if description else "",
+                  f"Required skills: {', '.join(required_skills)}" if required_skills else "",
+                  f"Student skills: {', '.join(student_skills)}" if student_skills else "",
+                  f"Extra instructions: {instructions}"]
+
+    user_msg = "\n\n".join([p for p in user_parts if p])
+
+    suggestion_text = ""
+
+    # Try Groq if client available
+    try:
+        if GROQ_API_KEY and groq_client is not None:
+            chat_completion = groq_client.chat.completions.create(
+                messages=[
+                    {"role": "system", "content": system_msg},
+                    {"role": "user", "content": user_msg},
+                ],
+                model="llama3-8b-8192",
+                temperature=0.0,
+                max_tokens=200,
+            )
+            suggestion_text = (chat_completion.choices[0].message.content or "").strip()
+        else:
+            # Fallback: generate a very short, deterministic suggestion using missing skills
+            missing = []
+            try:
+                student_lower = [s.lower().strip() for s in (student_skills or [])]
+                for rs in (required_skills or []):
+                    if isinstance(rs, str) and rs.lower().strip() not in student_lower:
+                        missing.append(rs)
+            except Exception:
+                missing = []
+
+            if missing:
+                top_missing = missing[:4]
+                suggestion_text = f"- Improvements: Learn {', '.join(top_missing)}.\n- Focus: Build 1 project showing {top_missing[0]}."
+            else:
+                suggestion_text = "- Improvements: Strengthen projects and examples for required skills.\n- Focus: Add one focused project that highlights core technologies."
+    except Exception as e:
+        print(f"LLM call failed: {e}")
+        traceback.print_exc()
+        # Provide fallback suggestion
+        suggestion_text = "- Improvements: Improve project examples and emphasize required skills.\n- Focus: Build a concise project showcasing core skills."
+
+    # Persist suggestion into hiring_sessions.requirements.llm_suggestion
+    try:
+        # Fetch existing requirements
+        resp = supabase.table('hiring_sessions').select('requirements').eq('id', session_id).execute()
+        existing_req = None
+        if resp and getattr(resp, 'data', None):
+            # response.data is usually a list
+            data = resp.data
+            if isinstance(data, list) and len(data) > 0:
+                existing_req = data[0].get('requirements') or {}
+            elif isinstance(data, dict):
+                existing_req = data.get('requirements') or {}
+
+        if existing_req is None:
+            existing_req = {}
+
+        # Attach the suggestion (store as plain string)
+        existing_req['llm_suggestion'] = suggestion_text
+
+        update_resp = supabase.table('hiring_sessions').update({
+            'requirements': existing_req
+        }).eq('id', session_id).execute()
+
+        # If update failed, log but still return suggestion
+        if update_resp is None or getattr(update_resp, 'data', None) is None:
+            print('Warning: failed to store LLM suggestion in DB for session', session_id)
+
+    except Exception as e:
+        print('Error storing LLM suggestion in DB:', e)
+        traceback.print_exc()
+
+    return JSONResponse({"status": "success", "suggestion": suggestion_text})
+
 @app.post("/extract-resume-for-builder/")
 async def extract_resume_for_builder(
     student_id: str = Form(...),

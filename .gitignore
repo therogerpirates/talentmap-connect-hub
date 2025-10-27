@@ -31,3 +31,4 @@ talent
 .env.test
 .env.production
 .env.*.local
+.venv
