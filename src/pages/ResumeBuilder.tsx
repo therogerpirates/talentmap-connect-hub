@@ -3,8 +3,11 @@ import { PDFDownloadLink, Page, Text, View, Document, StyleSheet, Font } from '@
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate, Link } from 'react-router-dom';
-import { BookOpen, FileText, User, Download as DownloadIcon, Upload, Bold, Palette } from 'lucide-react';
+import { BookOpen, FileText, User, Download as DownloadIcon, Upload, Bold, Palette, LogOut, Sparkles } from 'lucide-react';
 import { text } from "stream/consumers";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 // Template type
 type TemplateType = 'professional' | 'ats';
@@ -485,7 +488,7 @@ const ResumePDF = ({ resume }: { resume: typeof initialResumeData }) => (
 const ResumeBuilder: React.FC = () => {
   const [resume, setResume] = useState(initialResumeData);
   const [errors, setErrors] = useState<any>({});
-  const { profile } = useAuth();
+  const { signOut, profile } = useAuth();
   const [loading, setLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [currentResumeId, setCurrentResumeId] = useState<string | null>(null);
@@ -493,6 +496,22 @@ const ResumeBuilder: React.FC = () => {
   const [importingFromResume, setImportingFromResume] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateType>('professional');
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<string>('personal');
+  const sectionOrder = ['personal','education','skills','experience','projects','achievements','extracurricular','summary'];
+  const goNext = () => {
+    const i = sectionOrder.indexOf(activeTab);
+    if (i >= 0 && i < sectionOrder.length - 1) setActiveTab(sectionOrder[i+1]);
+  };
+  const goPrev = () => {
+    const i = sectionOrder.indexOf(activeTab);
+    if (i > 0) setActiveTab(sectionOrder[i-1]);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast({ title: 'Signed out successfully', description: 'You have been logged out of your account.' });
+  };
 
   // Auto-save to localStorage whenever resume data changes
   useEffect(() => {
@@ -1679,32 +1698,59 @@ const ResumeBuilder: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-colors duration-300 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 transition-colors duration-300">
+      {/* Unified Header like Resume Scanner */}
+      <header className="glass-panel backdrop-blur-xl border-b border-white/15 sticky top-0 z-50">
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex justify-between items-center">
+            <Link to="/" className="flex items-center space-x-3 group">
+              <div className="relative">
+                <div className="w-10 h-10 gradient-primary rounded-xl flex items-center justify-center shadow-glow group-hover:scale-110 transition-transform duration-300">
+                  <BookOpen className="w-6 h-6 text-white" />
+                </div>
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white animate-pulse" />
+              </div>
+              <div>
+                <span className="text-xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+                  TalentMap
+                </span>
+                <div className="text-xs text-muted-foreground">Student Portal</div>
+              </div>
+            </Link>
+            <div className="flex items-center space-x-4">
+              <div className="hidden md:flex items-center space-x-4">
+                <Link to="/student-dashboard">
+                  <Button variant="ghost" size="sm" className="hover:bg-primary/10 hover:text-primary">Dashboard</Button>
+                </Link>
+                <Link to="/student-details">
+                  <Button variant="ghost" size="sm" className="hover:bg-primary/10 hover:text-primary">Details</Button>
+                </Link>
+                <Link to="/resume-scanner">
+                  <Button variant="ghost" size="sm" className="hover:bg-primary/10 hover:text-primary">Resume Scanner</Button>
+                </Link>
+                <Link to="/resume-builder">
+                  <Button variant="secondary" size="sm" className="">Resume Builder</Button>
+                </Link>
+              </div>
+              <div className="hidden md:flex items-center space-x-3 px-4 py-2 bg-muted/50 rounded-lg">
+                <div className="w-8 h-8 gradient-primary rounded-full flex items-center justify-center text-white text-sm font-medium">
+                  {profile?.full_name?.split(' ').map(n => n[0]).join('') || 'S'}
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-medium">{profile?.full_name}</div>
+                  <div className="text-xs text-muted-foreground">Student</div>
+                </div>
+              </div>
+              <Button variant="ghost" size="sm" onClick={handleSignOut} className="hover:bg-destructive/10 hover:text-destructive">
+                <LogOut className="w-4 h-4 mr-2" /> Logout
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="px-6 py-8">
       <div className="max-w-6xl mx-auto">
-        {/* Themed Navigation Bar */}
-        <nav className="flex items-center justify-center gap-6 mb-8 py-3 px-4 rounded-xl bg-white dark:bg-gray-900 shadow border border-gray-200 dark:border-gray-800">
-          <button
-            type="button"
-            onClick={() => navigate('/student-dashboard')}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-gray-900 dark:text-white bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-gray-800 dark:to-gray-700 hover:from-blue-200 hover:to-indigo-200 dark:hover:from-gray-700 dark:hover:to-gray-600 transition"
-          >
-            <BookOpen className="w-5 h-5 text-blue-600 dark:text-blue-400" /> Student Dashboard
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/resume-scanner')}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-gray-900 dark:text-white bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-gray-800 dark:to-gray-700 hover:from-blue-200 hover:to-indigo-200 dark:hover:from-gray-700 dark:hover:to-gray-600 transition"
-          >
-            <FileText className="w-5 h-5 text-indigo-600 dark:text-indigo-400" /> Resume Scanner
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/student-details')}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-gray-900 dark:text-white bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-gray-800 dark:to-gray-700 hover:from-blue-200 hover:to-indigo-200 dark:hover:from-gray-700 dark:hover:to-gray-600 transition"
-          >
-            <User className="w-5 h-5 text-green-600 dark:text-green-400" /> Student Details
-          </button>
-        </nav>
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-primary">Resume Builder</h1>
           <div className="flex items-center gap-4">
@@ -1745,9 +1791,22 @@ const ResumeBuilder: React.FC = () => {
             )}
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Form Section */}
+  <div className="grid grid-cols-2 gap-8">
+          {/* Form Section with Tabs */}
           <div>
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="glass-panel mb-4 overflow-x-auto">
+                <TabsTrigger value="personal">Personal</TabsTrigger>
+                <TabsTrigger value="education">Education</TabsTrigger>
+                <TabsTrigger value="skills">Skills</TabsTrigger>
+                <TabsTrigger value="experience">Experience</TabsTrigger>
+                <TabsTrigger value="projects">Projects</TabsTrigger>
+                <TabsTrigger value="achievements">Achievements</TabsTrigger>
+                <TabsTrigger value="extracurricular">Extracurricular</TabsTrigger>
+                <TabsTrigger value="summary">Summary</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="personal">
             {/* Info Card for Import Feature */}
             <div className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 mb-4">
               <div className="flex items-start gap-3">
@@ -1820,6 +1879,13 @@ const ResumeBuilder: React.FC = () => {
                 </div>
               </div>
             </div>
+            <div className="flex justify-between">
+              <span />
+              <Button onClick={goNext}>Next</Button>
+            </div>
+            </TabsContent>
+
+            <TabsContent value="education">
             {/* Education Section */}
             <div className="bg-white rounded shadow p-4 mb-4">
               <h2 className="text-xl font-semibold mb-2">Education</h2>
@@ -1855,6 +1921,13 @@ const ResumeBuilder: React.FC = () => {
               ))}
               <button type="button" onClick={addEducation} className="mt-2 text-blue-600">+ Add Education</button>
             </div>
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={goPrev}>Previous</Button>
+              <Button onClick={goNext}>Next</Button>
+            </div>
+            </TabsContent>
+
+            <TabsContent value="skills">
             {/* Skills Section */}
             <div className="bg-white rounded shadow p-4 mb-4">
               <h2 className="text-xl font-semibold mb-2">Skills</h2>
@@ -1866,6 +1939,13 @@ const ResumeBuilder: React.FC = () => {
               ))}
               <button type="button" onClick={addSkill} className="mt-2 text-blue-600">+ Add Skill</button>
             </div>
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={goPrev}>Previous</Button>
+              <Button onClick={goNext}>Next</Button>
+            </div>
+            </TabsContent>
+
+            <TabsContent value="experience">
             {/* Experience Section */}
             <div className="bg-white rounded shadow p-4 mb-4">
               <h2 className="text-xl font-semibold mb-2">Experience</h2>
@@ -1895,6 +1975,13 @@ const ResumeBuilder: React.FC = () => {
               ))}
               <button type="button" onClick={addExperience} className="mt-2 text-blue-600 hover:text-blue-800 font-medium">+ Add Experience</button>
             </div>
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={goPrev}>Previous</Button>
+              <Button onClick={goNext}>Next</Button>
+            </div>
+            </TabsContent>
+
+            <TabsContent value="projects">
             {/* Projects Section */}
             <div className="bg-white rounded shadow p-4 mb-4">
               <h2 className="text-xl font-semibold mb-2">Projects</h2>
@@ -1924,6 +2011,13 @@ const ResumeBuilder: React.FC = () => {
               ))}
               <button type="button" onClick={addProject} className="mt-2 text-blue-600 hover:text-blue-800 font-medium">+ Add Project</button>
             </div>
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={goPrev}>Previous</Button>
+              <Button onClick={goNext}>Next</Button>
+            </div>
+            </TabsContent>
+
+            <TabsContent value="achievements">
             {/* Achievements/Certifications Section */}
             <div className="bg-white rounded shadow p-4 mb-4">
               <h2 className="text-xl font-semibold mb-2">Achievements / Certifications</h2>
@@ -1940,6 +2034,13 @@ const ResumeBuilder: React.FC = () => {
               ))}
               <button type="button" onClick={addAchievement} className="mt-2 text-blue-600">+ Add Achievement</button>
             </div>
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={goPrev}>Previous</Button>
+              <Button onClick={goNext}>Next</Button>
+            </div>
+            </TabsContent>
+
+            <TabsContent value="extracurricular">
             {/* Extra-curricular/Volunteer Section */}
             <div className="bg-white rounded shadow p-4 mb-4">
               <h2 className="text-xl font-semibold mb-2">Extra-curricular / Volunteer</h2>
@@ -1969,14 +2070,27 @@ const ResumeBuilder: React.FC = () => {
               ))}
               <button type="button" onClick={addExtra} className="mt-2 text-blue-600 hover:text-blue-800 font-medium">+ Add Extra-curricular</button>
             </div>
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={goPrev}>Previous</Button>
+              <Button onClick={goNext}>Next</Button>
+            </div>
+            </TabsContent>
+
+            <TabsContent value="summary">
             {/* Summary Section */}
             <div className="bg-white rounded shadow p-4 mb-4">
               <h2 className="text-xl font-semibold mb-2">Professional Summary</h2>
               <textarea name="summary" value={resume.summary} onChange={e => setResume({ ...resume, summary: e.target.value })} className="input input-bordered w-full" rows={3} />
             </div>
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={goPrev}>Previous</Button>
+              <span />
+            </div>
+            </TabsContent>
+            </Tabs>
           </div>
           {/* Preview Section */}
-          <div className="sticky top-4 self-start" style={{ maxHeight: 'calc(100vh - 2rem)', overflowY: 'auto' }}>
+          <div className="sticky top-28 self-start mt-16" style={{ maxHeight: 'calc(100vh - 2rem)', overflowY: 'auto' }}>
             <div className="bg-gray-50 dark:bg-gray-800 rounded shadow p-4 mb-4">
               <div className="flex items-center justify-between mb-2">
                 <h2 className="text-xl font-semibold text-indigo-700 dark:text-indigo-400">Resume Preview</h2>
@@ -1987,7 +2101,11 @@ const ResumeBuilder: React.FC = () => {
                   </span>
                 </div>
               </div>
-              {renderPreview()}
+              <div className="overflow-auto">
+                <div className="origin-top mx-auto" style={{ transform: 'scale(0.85)', transformOrigin: 'top center' }}>
+                  {renderPreview()}
+                </div>
+              </div>
             <div className="p-2 flex gap-4 items-center">
               <PDFDownloadLink 
                 document={selectedTemplate === 'professional' ? <ResumePDF resume={resume} /> : <ATSResumePDF resume={resume} />} 
@@ -2014,6 +2132,7 @@ const ResumeBuilder: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

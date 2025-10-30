@@ -185,6 +185,11 @@ const StudentDashboard = () => {
                   Student Details
                 </Button>
               </Link>
+              <Link to="/resume-builder">
+                <Button variant="ghost" size="sm" className="text-gray-900 dark:text-white hover:text-gray-800 dark:hover:text-gray-200 transition-colors duration-300">
+                  Resume Builder
+                </Button>
+              </Link>
             </div>
             <span className="text-sm text-gray-600 dark:text-gray-300 transition-colors duration-300">Welcome, {profileData.fullName}</span>
             <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-gray-900 dark:text-white hover:text-gray-800 dark:hover:text-gray-200 transition-colors duration-300">

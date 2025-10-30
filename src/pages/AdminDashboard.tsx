@@ -24,7 +24,7 @@ const AdminDashboard = () => {
   const addCandidate = useAddCandidateToSession();
   const [fullName, setFullName] = useState('');
   const [selectedSessionForCandidates, setSelectedSessionForCandidates] = useState<string | null>(null);
-  const [selectedTab, setSelectedTab] = useState('dashboard');
+  const [selectedTab, setSelectedTab] = useState('sessions');
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -201,11 +201,7 @@ const AdminDashboard = () => {
           {/* Main Content Tabs */}
           <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
             <div className="flex items-center justify-between">
-              <TabsList className="grid w-full max-w-md grid-cols-3 bg-muted/50 p-1 h-12">
-                <TabsTrigger value="dashboard" className="text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                  <Menu className="w-4 h-4 mr-2" />
-                  Overview
-                </TabsTrigger>
+              <TabsList className="grid w-full max-w-md grid-cols-2 bg-muted/50 p-1 h-12">
                 <TabsTrigger value="sessions" className="text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm">
                   <Users className="w-4 h-4 mr-2" />
                   Sessions
@@ -238,45 +234,7 @@ const AdminDashboard = () => {
               )}
             </div>
 
-            <TabsContent value="dashboard" className="space-y-6">
-              {/* Recent Sessions */}
-              <Card className="glass-card border-0 shadow-card">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-xl font-semibold">Recent Sessions</CardTitle>
-                      <CardDescription>Your latest hiring sessions and their progress</CardDescription>
-                    </div>
-                    <Button variant="outline" onClick={() => setSelectedTab('sessions')}>
-                      View All
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {recentSessions.length > 0 ? (
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {recentSessions.map((session) => (
-                        <SessionCard
-                          key={session.id}
-                          session={session}
-                          onAddCandidates={handleAddCandidatesToSession}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="py-12 text-center">
-                      <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-medium mb-2">No sessions yet</h3>
-                      <p className="text-muted-foreground mb-4">Create your first hiring session to get started</p>
-                      <Button onClick={() => navigate('/create-session')} className="gradient-primary text-white border-0">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Create Session
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
+            {/* Overview removed - Sessions and Search only */}
 
             <TabsContent value="sessions" className="space-y-6">
               <Card className="glass-card border-0 shadow-card">
@@ -284,12 +242,18 @@ const AdminDashboard = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle className="text-xl font-semibold">All Hiring Sessions</CardTitle>
-                      <CardDescription>Manage and track all your hiring sessions</CardDescription>
+                      <CardDescription>Manage and track your active and upcoming sessions</CardDescription>
                     </div>
-                    <Button onClick={() => navigate('/create-session')} className="gradient-primary text-white border-0">
-                      <Plus className="w-4 h-4 mr-2" />
-                      New Session
-                    </Button>
+                    <div className="flex items-center gap-3">
+                      <Button variant="outline" onClick={() => setSelectedTab('search')}>
+                        <Search className="w-4 h-4 mr-2" />
+                        Quick Search
+                      </Button>
+                      <Button onClick={() => navigate('/create-session')} className="gradient-primary text-white border-0">
+                        <Plus className="w-4 h-4 mr-2" />
+                        New Session
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -319,10 +283,42 @@ const AdminDashboard = () => {
             </TabsContent>
 
             <TabsContent value="search" className="space-y-6">
-              <StudentSearch
-                onAddToSession={selectedSessionForCandidates ? handleAddToSession : undefined}
-                selectedSessionId={selectedSessionForCandidates || undefined}
-              />
+              <Card className="glass-card border-0 shadow-card">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-xl font-semibold">Search Candidates</CardTitle>
+                      <CardDescription>Find students by skills, name, or eligibility and add them to sessions</CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {activeSessions.length > 0 && (
+                        <Select 
+                          value={selectedSessionForCandidates || ''} 
+                          onValueChange={setSelectedSessionForCandidates}
+                        >
+                          <SelectTrigger className="w-56">
+                            <SelectValue placeholder="Add to session (optional)" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {activeSessions.map((session) => (
+                              <SelectItem key={session.id} value={session.id}>
+                                {session.title} - {session.role}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      <Button variant="outline" onClick={() => setSelectedSessionForCandidates(null)}>Clear</Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <StudentSearch
+                    onAddToSession={selectedSessionForCandidates ? handleAddToSession : undefined}
+                    selectedSessionId={selectedSessionForCandidates || undefined}
+                  />
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
         </div>

@@ -7,6 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { BookOpen, Upload, FileText, CheckCircle, LogOut, Sparkles, Lightbulb, Target, TrendingUp, Award, GraduationCap, BookMarked } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useHiringSessions, HiringSession } from '@/hooks/useHiringSessions';
 import ResumeUpload from '@/components/ResumeUpload';
@@ -108,6 +110,9 @@ const ResumeScanner = () => {
   const [isExtracting, setIsExtracting] = useState(false);
   const [hasResume, setHasResume] = useState(false);
   const { data: sessions, isLoading: sessionsLoading } = useHiringSessions();
+  const [activeTab, setActiveTab] = useState<string>('overview');
+  const [sessionQuery, setSessionQuery] = useState('');
+  const [onlyShowGaps, setOnlyShowGaps] = useState(false);
 
   // Helper function to convert project/experience objects to strings
   // This is needed because the backend returns structured objects for Resume Builder,
@@ -291,6 +296,8 @@ const ResumeScanner = () => {
       description: "You have been logged out of your account."
     });
   };
+
+  // Quick actions removed per request
 
   // Comment out the old saveExtractedData function since we auto-save now
   // const saveExtractedData = async () => {
@@ -489,6 +496,11 @@ const ResumeScanner = () => {
                     Details
                   </Button>
                 </Link>
+                <Link to="/resume-builder">
+                  <Button variant="ghost" size="sm" className="hover:bg-primary/10 hover:text-primary">
+                    Resume Builder
+                  </Button>
+                </Link>
               </div>
               <div className="hidden md:flex items-center space-x-3 px-4 py-2 bg-muted/50 rounded-lg">
                 <div className="w-8 h-8 gradient-primary rounded-full flex items-center justify-center text-white text-sm font-medium">
@@ -528,289 +540,271 @@ const ResumeScanner = () => {
             </div>
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-8">
-            {/* Resume Upload Section */}
-            <div className="space-y-6">
-              <Card className="glass-panel">
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Upload className="w-5 h-5 text-primary" />
-                    <span>Upload Resume</span>
-                  </CardTitle>
-                  <CardDescription>
-                    Upload your resume (PDF) to extract information and get AI-powered insights.
-                    {hasResume && (
-                      <span className="block mt-2 text-orange-600 font-medium">
-                        💡 Re-uploading will update: Skills, Projects, Experience, Academic scores, ATS score, and AI summary
-                      </span>
-                    )}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResumeUpload onUploadSuccess={handleResumeUpload} hasExistingResume={hasResume} />
-                </CardContent>
-              </Card>
+          {/* Tabbed content for clarity */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="fade-in-up">
+            <TabsList className="glass-panel p-1 mb-6">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="sessions" disabled={!extractedData.skills.length}>Sessions</TabsTrigger>
+            </TabsList>
 
-              {/* Extraction Status */}
-              {isExtracting && (
-                <Card className="glass-panel">
-                  <CardContent className="p-6">
-                    <div className="text-center space-y-4">
-                      <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto animate-pulse">
-                        <Sparkles className="w-8 h-8 text-primary" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-medium">
-                          {hasResume ? 'Re-analyzing Resume...' : 'Analyzing Resume...'}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          {hasResume 
-                            ? 'Processing your updated resume and refreshing all extracted information...'
-                            : 'Our AI is extracting skills, projects, experience, and generating insights...'
-                          }
-                        </p>
-                      </div>
-                      <div className="w-full bg-muted rounded-full h-2">
-                        <div className="bg-primary h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-
-            {/* Extracted Information */}
-            {extractedData.skills.length > 0 && (
+            {/* OVERVIEW */}
+            <TabsContent value="overview">
               <div className="space-y-6">
-                <Card className="glass-panel">
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <FileText className="w-5 h-5 text-primary" />
-                      <span>Extracted Information</span>
-                    </CardTitle>
-                    <CardDescription>
-                      Information extracted from your resume
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    {/* Skills */}
-                    <div>
-                      <Label className="text-sm font-medium mb-2 block">Skills</Label>
-                      <div className="flex flex-wrap gap-2">
-                        {extractedData.skills.map((skill, index) => (
-                          <Badge key={index} variant="secondary" className="bg-primary/10 text-primary">
-                            {skill}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Academic Information */}
-                    <div className="grid grid-cols-3 gap-4">
-                      <div>
-                        <Label className="text-sm font-medium mb-1 block">CGPA</Label>
-                        <p className="text-lg font-semibold">{extractedData.cgpa}</p>
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium mb-1 block">10th Mark</Label>
-                        <p className="text-lg font-semibold">{extractedData.tenthMark}</p>
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium mb-1 block">12th Mark</Label>
-                        <p className="text-lg font-semibold">{extractedData.twelfthMark}</p>
-                      </div>
-                    </div>
-
-                    {/* Projects */}
-                    {extractedData.projects.length > 0 && (
-                      <div>
-                        <Label className="text-sm font-medium mb-2 block">Projects</Label>
-                        <div className="space-y-2">
-                          {extractedData.projects.map((project, index) => (
-                            <div key={index} className="p-3 bg-muted/50 rounded-lg">
-                              <p className="text-sm">{project}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Experience */}
-                    {extractedData.experience.length > 0 && (
-                      <div>
-                        <Label className="text-sm font-medium mb-2 block">Experience</Label>
-                        <div className="space-y-2">
-                          {extractedData.experience.map((exp, index) => (
-                            <div key={index} className="p-3 bg-muted/50 rounded-lg">
-                              <p className="text-sm">{exp}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Comment out the old save button since we auto-save now */}
-                    {/* <Button onClick={saveExtractedData} className="w-full gradient-primary text-white">
-                      Save to Profile
-                    </Button> */}
-                    
-                    {/* New refresh analysis button */}
-                    <Button onClick={refreshAnalysis} variant="outline" className="w-full" disabled={isExtracting}>
-                      {isExtracting ? 'Re-analyzing...' : 'Refresh Analysis'}
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-          </div>
-
-          {/* Sessions & Missing Skills Section */}
-          {sessions && sessions.length > 0 && extractedData.skills.length > 0 && (
-            <div className="mt-8 space-y-6">
-              <div className="text-center mb-4">
-                <h2 className="text-2xl font-bold gradient-primary bg-clip-text text-transparent mb-1">Relevant Sessions — Missing Skills</h2>
-                <p className="text-sm text-muted-foreground">See which skills are missing from your profile for upcoming sessions</p>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-4">
-                {sessions.map((session: HiringSession) => {
-                  const requiredSkills = session?.requirements?.required_skills || [];
-                  const missing = computeMissingSkills(requiredSkills, extractedData.skills || []);
-
-                  return (
-                    <Card key={session.id} className="glass-panel">
-                      <CardHeader>
-                        <CardTitle className="flex items-center justify-between">
-                          <span className="font-medium">{session.title}</span>
-                          <span className="text-sm text-muted-foreground">{session.role}</span>
-                        </CardTitle>
-                        <div className="mt-1 text-xs text-muted-foreground">{session.status}</div>
-                      </CardHeader>
-                      <CardContent>
-                        {Array.isArray(requiredSkills) && requiredSkills.length > 0 ? (
-                          <div className="space-y-2">
-                            <div className="text-sm font-medium text-muted-foreground">Missing Skills</div>
-                            <div className="flex flex-wrap gap-2">
-                              {missing.length > 0 ? (
-                                missing.map((m, idx) => (
-                                  <Badge key={idx} variant="outline" className="bg-destructive/5 text-destructive">{m}</Badge>
-                                ))
-                              ) : (
-                                <Badge variant="secondary" className="bg-green-50 text-green-700">All required skills matched</Badge>
-                              )}
-                            </div>
-                            <div className="mt-3">
-                              <Button
-                                variant="outline"
-                                className="text-sm"
-                                onClick={() => fetchLLMSuggestion(session)}
-                                disabled={!!llmLoading[session.id]}
-                              >
-                                {llmLoading[session.id] ? 'Thinking...' : 'LLM Suggestion'}
-                              </Button>
-
-                              {llmSuggestions[session.id] && (
-                                <div className="mt-2 p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
-                                  {llmSuggestions[session.id]}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-sm text-muted-foreground">No required skills listed for this session.</div>
+                {/* Upload + Status */}
+                <div className="space-y-6">
+                  <Card className="glass-panel">
+                    <CardHeader>
+                      <CardTitle className="flex items-center space-x-2">
+                        <Upload className="w-5 h-5 text-primary" />
+                        <span>Upload Resume</span>
+                      </CardTitle>
+                      <CardDescription>
+                        Upload your resume (PDF) to extract information and get AI-powered insights.
+                        {hasResume && (
+                          <span className="block mt-2 text-orange-600 font-medium">
+                            💡 Re-uploading will update: Skills, Projects, Experience, Academic scores, ATS score, and AI summary
+                          </span>
                         )}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ResumeUpload onUploadSuccess={handleResumeUpload} hasExistingResume={hasResume} />
+                    </CardContent>
+                  </Card>
+
+                  {isExtracting && (
+                    <Card className="glass-panel">
+                      <CardContent className="p-6">
+                        <div className="text-center space-y-4">
+                          <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto animate-pulse">
+                            <Sparkles className="w-8 h-8 text-primary" />
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-medium">
+                              {hasResume ? 'Re-analyzing Resume...' : 'Analyzing Resume...'}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              {hasResume
+                                ? 'Processing your updated resume and refreshing all extracted information...'
+                                : 'Our AI is extracting skills, projects, experience, and generating insights...'}
+                            </p>
+                          </div>
+                          <div className="w-full bg-muted rounded-full h-2">
+                            <div className="bg-primary h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+                          </div>
+                        </div>
                       </CardContent>
                     </Card>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+                  )}
+                </div>
+                {/* ATS + Extracted side by side */}
+                {(studentData?.ats_score !== undefined || extractedData.skills.length > 0) && (
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {/* ATS Score (if available) */}
+                    {studentData?.ats_score !== undefined && (
+                      <Card className="glass-panel">
+                        <CardHeader>
+                          <CardTitle className="text-base">ATS Score</CardTitle>
+                          <CardDescription>Automated tracking system compatibility</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex items-center gap-4">
+                            <div
+                              className="relative w-20 h-20 rounded-full"
+                              style={{
+                                background: `conic-gradient(var(--primary) ${Math.min(Number(studentData?.ats_score || 0), 100)}%, hsl(var(--muted-foreground)) 0)`
+                              }}
+                              aria-label={`ATS score ${studentData?.ats_score}/100`}
+                            >
+                              <div className="absolute inset-1 bg-background rounded-full flex items-center justify-center text-sm font-semibold">
+                                {studentData?.ats_score ?? 0}%
+                              </div>
+                            </div>
+                            <p className="text-sm text-muted-foreground">Aim for 80+ for excellent ATS performance. Use clear headings and standard section names.</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
 
-          {/* AI Suggestions Section */}
-          {aiSuggestions.resumeImprovements.length > 0 && (
-            <div className="mt-8 space-y-6">
-              <div className="text-center mb-8">
-                <h2 className="text-3xl font-bold gradient-primary bg-clip-text text-transparent mb-2">
-                  AI-Powered Suggestions
-                </h2>
-                <p className="text-muted-foreground">
-                  Personalized recommendations to improve your resume and career growth
-                </p>
-              </div>
+                    {/* Extracted Information */}
+                    {extractedData.skills.length > 0 && (
+                      <Card className="glass-panel">
+                        <CardHeader>
+                          <CardTitle className="flex items-center space-x-2">
+                            <FileText className="w-5 h-5 text-primary" />
+                            <span>Extracted Information</span>
+                          </CardTitle>
+                          <CardDescription>Information from your resume</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                          {/* Skills */}
+                          <div>
+                            <Label className="text-sm font-medium mb-2 block">Skills</Label>
+                            <div className="flex flex-wrap gap-2">
+                              {extractedData.skills.map((skill, index) => (
+                                <Badge key={index} variant="secondary" className="bg-primary/10 text-primary">{skill}</Badge>
+                              ))}
+                            </div>
+                          </div>
 
-              <div className="grid md:grid-cols-3 gap-6">
-                {/* Resume Improvements */}
+                          {/* Academics */}
+                          <div className="grid grid-cols-3 gap-4">
+                            <div>
+                              <Label className="text-sm font-medium mb-1 block">CGPA</Label>
+                              <p className="text-lg font-semibold">{extractedData.cgpa}</p>
+                            </div>
+                            <div>
+                              <Label className="text-sm font-medium mb-1 block">10th Mark</Label>
+                              <p className="text-lg font-semibold">{extractedData.tenthMark}</p>
+                            </div>
+                            <div>
+                              <Label className="text-sm font-medium mb-1 block">12th Mark</Label>
+                              <p className="text-lg font-semibold">{extractedData.twelfthMark}</p>
+                            </div>
+                          </div>
+
+                          {/* Projects */}
+                          {extractedData.projects.length > 0 && (
+                            <div>
+                              <Label className="text-sm font-medium mb-2 block">Projects</Label>
+                              <div className="space-y-2">
+                                {extractedData.projects.map((project, index) => (
+                                  <div key={index} className="p-3 bg-muted/50 rounded-lg">
+                                    <p className="text-sm">{project}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Experience */}
+                          {extractedData.experience.length > 0 && (
+                            <div>
+                              <Label className="text-sm font-medium mb-2 block">Experience</Label>
+                              <div className="space-y-2">
+                                {extractedData.experience.map((exp, index) => (
+                                  <div key={index} className="p-3 bg-muted/50 rounded-lg">
+                                    <p className="text-sm">{exp}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* SESSIONS */}
+            <TabsContent value="sessions">
+              {sessionsLoading ? (
                 <Card className="glass-panel">
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <Lightbulb className="w-5 h-5 text-yellow-500" />
-                      <span>Resume Improvements</span>
-                    </CardTitle>
-                    <CardDescription>
-                      Suggestions to enhance your resume
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {aiSuggestions.resumeImprovements.map((improvement, index) => (
-                        <div key={index} className="flex items-start space-x-3">
-                          <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
-                          <p className="text-sm text-muted-foreground">{improvement}</p>
-                        </div>
-                      ))}
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-3 text-muted-foreground">
+                      <div className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                      Loading sessions...
                     </div>
                   </CardContent>
                 </Card>
-
-                {/* Skill Recommendations */}
-                <Card className="glass-panel">
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <Target className="w-5 h-5 text-blue-500" />
-                      <span>Skill Recommendations</span>
-                    </CardTitle>
-                    <CardDescription>
-                      Skills to learn next for career growth
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {aiSuggestions.skillRecommendations.map((skill, index) => (
-                        <div key={index} className="flex items-start space-x-3">
-                          <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                          <p className="text-sm text-muted-foreground">{skill}</p>
+              ) : (
+                sessions && sessions.length > 0 && extractedData.skills.length > 0 ? (
+                  <div className="space-y-4">
+                    <Card className="glass-panel">
+                      <CardContent className="p-6">
+                        <div className="flex flex-col md:flex-row md:items-center gap-3">
+                          <Input
+                            placeholder="Search sessions by title or role"
+                            value={sessionQuery}
+                            onChange={(e) => setSessionQuery(e.target.value)}
+                            className="md:max-w-sm"
+                          />
+                          <div className="flex items-center gap-2">
+                            <Checkbox id="only-gaps" checked={!!onlyShowGaps} onCheckedChange={(v:any)=> setOnlyShowGaps(!!v)} />
+                            <Label htmlFor="only-gaps" className="text-sm text-muted-foreground">Only show sessions with gaps</Label>
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+                      </CardContent>
+                    </Card>
 
-                {/* Learning Path */}
-                <Card className="glass-panel">
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <TrendingUp className="w-5 h-5 text-green-500" />
-                      <span>Learning Path</span>
-                    </CardTitle>
-                    <CardDescription>
-                      Structured learning recommendations
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {aiSuggestions.learningPath.map((path, index) => (
-                        <div key={index} className="flex items-start space-x-3">
-                          <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
-                          <p className="text-sm text-muted-foreground">{path}</p>
-                        </div>
-                      ))}
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {sessions
+                        .filter((s: HiringSession) => {
+                          const q = sessionQuery.trim().toLowerCase();
+                          if (!q) return true;
+                          return (
+                            s.title?.toLowerCase().includes(q) ||
+                            s.role?.toLowerCase().includes(q) ||
+                            s.description?.toLowerCase().includes(q)
+                          );
+                        })
+                        .filter((s: HiringSession) => {
+                          if (!onlyShowGaps) return true;
+                          const req = s?.requirements?.required_skills || [];
+                          const missing = computeMissingSkills(req, extractedData.skills || []);
+                          return missing.length > 0;
+                        })
+                        .map((session: HiringSession) => {
+                          const requiredSkills = session?.requirements?.required_skills || [];
+                          const missing = computeMissingSkills(requiredSkills, extractedData.skills || []);
+                          return (
+                            <Card key={session.id} className="glass-panel">
+                              <CardHeader>
+                                <CardTitle className="flex items-center justify-between">
+                                  <span className="font-medium">{session.title}</span>
+                                  <span className="text-sm text-muted-foreground">{session.role}</span>
+                                </CardTitle>
+                                <div className="mt-1 text-xs text-muted-foreground">{session.status}</div>
+                              </CardHeader>
+                              <CardContent>
+                                {Array.isArray(requiredSkills) && requiredSkills.length > 0 ? (
+                                  <div className="space-y-2">
+                                    <div className="text-sm font-medium text-muted-foreground">Missing Skills</div>
+                                    <div className="flex flex-wrap gap-2">
+                                      {missing.length > 0 ? (
+                                        missing.map((m, idx) => (
+                                          <Badge key={idx} variant="outline" className="bg-destructive/5 text-destructive">{m}</Badge>
+                                        ))
+                                      ) : (
+                                        <Badge variant="secondary" className="bg-green-50 text-green-700">All required skills matched</Badge>
+                                      )}
+                                    </div>
+                                    <div className="mt-3">
+                                      <Button
+                                        variant="outline"
+                                        className="text-sm"
+                                        onClick={() => fetchLLMSuggestion(session)}
+                                        disabled={!!llmLoading[session.id]}
+                                      >
+                                        {llmLoading[session.id] ? 'Thinking...' : 'LLM Suggestion'}
+                                      </Button>
+
+                                      {llmSuggestions[session.id] && (
+                                        <div className="mt-2 p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
+                                          {llmSuggestions[session.id]}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="text-sm text-muted-foreground">No required skills listed for this session.</div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
                     </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          )}
+                  </div>
+                ) : (
+                  <div className="text-center text-muted-foreground">No sessions to display.</div>
+                )
+              )}
+            </TabsContent>
+
+            {/* Suggestions tab removed per request */}
+          </Tabs>
         </div>
       </div>
     </div>
