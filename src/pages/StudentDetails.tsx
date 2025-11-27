@@ -420,6 +420,24 @@ const StudentDetails = () => {
               </CardContent>
             </Card>
 
+            {/* External Profiles */}
+            <Card className="glass-panel">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Link className="w-5 h-5 text-primary" />
+                  <span>External Profiles</span>
+                </CardTitle>
+                <CardDescription>
+                  Links to your professional profiles (LinkedIn, GitHub, LeetCode)
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {renderEditableField('LinkedIn Profile', 'linkedin_url', studentData?.linkedin_url || studentData?.linkedin || '')}
+                {renderEditableField('GitHub Profile', 'github_url', studentData?.github_url || studentData?.github || '')}
+                {renderEditableField('LeetCode Profile', 'leetcode_url', studentData?.leetcode_url || '')}
+              </CardContent>
+            </Card>
+
             {/* Academic Information */}
             <Card className="glass-panel">
               <CardHeader>

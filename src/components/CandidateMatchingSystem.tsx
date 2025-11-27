@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogPortal, DialogOverlay, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { SessionCandidate } from "@/hooks/useSessionCandidates";
@@ -29,56 +29,49 @@ import {
   Eye,
   Filter,
   RefreshCw,
-  Download
+  Download,
+  Copy,
+  X
 } from "lucide-react";
 
-interface DetailedAnalysis {
+// Minimal types used by this component
+type DetailedAnalysis = {
   overall_score: number;
   skills_analysis: {
-    weight: number;
     score: number;
+    weight: number;
     matched_skills: Array<{ required: string; student_has: string }>;
     missing_skills: string[];
-    additional_skills: string[];
   };
   education_analysis: {
-    weight: number;
     score: number;
-    requirements_met: Array<{ required: string; student_has: string }>;
+    weight: number;
+    requirements_met: Array<{ required: string }>;
     requirements_not_met: string[];
   };
   experience_analysis: {
-    weight: number;
     score: number;
+    weight: number;
     required_years: number;
     student_experience_years: number;
     has_internship: boolean;
   };
   academic_analysis: {
-    weight: number;
     score: number;
-    required_cgpa: number;
-    student_gpa: string;
+    weight: number;
+    required_cgpa?: number;
+    student_gpa?: number;
     meets_requirement: boolean;
   };
-  year_eligibility_analysis: {
-    weight: number;
-    score: number;
-    eligible_years: number[];
-    student_year: string;
-    is_eligible: boolean;
-  };
   recommendations: string[];
-  student_info: any;
-  job_info: any;
-}
+};
 
-interface SessionAnalytics {
+type SessionAnalytics = {
   session_info: {
     title: string;
-    role: string;
-    target_hires: number;
-    current_hires: number;
+    role?: string;
+    target_hires?: number;
+    current_hires?: number;
   };
   candidate_stats: {
     total_candidates: number;
@@ -113,7 +106,7 @@ interface SessionAnalytics {
       year?: string;
     }>;
   };
-}
+};
 
 interface CandidateMatchingSystemProps {
   sessionId: string;
@@ -137,6 +130,7 @@ export default function CandidateMatchingSystem({
   const [analytics, setAnalytics] = useState<SessionAnalytics | null>(null);
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [dialogOpenId, setDialogOpenId] = useState<string | null>(null);
 
   // Filter candidates based on selected status
   const filteredCandidates = candidates.filter(candidate => 
@@ -180,94 +174,11 @@ export default function CandidateMatchingSystem({
     return 'Poor Match';
   };
 
-  const handleCandidateSelection = (candidateId: string) => {
-    setSelectedCandidates(prev => 
-      prev.includes(candidateId)
-        ? prev.filter(id => id !== candidateId)
-        : [...prev, candidateId]
-    );
-  };
-
-  const handleBulkStatusUpdate = async () => {
-    if (!bulkStatus || selectedCandidates.length === 0) {
-      toast({
-        title: "Error",
-        description: "Please select candidates and a status",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      const updates = selectedCandidates.map(candidateId => ({
-        candidate_id: candidateId,
-        status: bulkStatus,
-        notes: bulkNotes
-      }));
-
-      const response = await fetch('/bulk-update-candidate-status/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ updates }),
-      });
-
-      const data = await response.json();
-      
-      if (data.status === 'success') {
-        toast({
-          title: "Success",
-          description: `Updated ${data.updated_count} candidates successfully`,
-        });
-        
-        // Update individual candidates
-        selectedCandidates.forEach(candidateId => {
-          onStatusUpdate(candidateId, bulkStatus, bulkNotes);
-        });
-        
-        setSelectedCandidates([]);
-        setBulkStatus('');
-        setBulkNotes('');
-      } else {
-        throw new Error(data.message);
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update candidate statuses",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const fetchDetailedAnalysis = async (studentId: string) => {
-    setIsLoadingAnalysis(true);
-    try {
-      const response = await fetch(`/detailed-match-analysis/${sessionId}/${studentId}`);
-      const data = await response.json();
-      
-      if (data.status === 'success') {
-        setDetailedAnalysis(data.analysis);
-      } else {
-        throw new Error(data.message);
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load detailed analysis",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoadingAnalysis(false);
-    }
-  };
-
   const fetchSessionAnalytics = async () => {
     try {
       const response = await fetch(`/session-analytics/${sessionId}`);
       const data = await response.json();
-      
+
       if (data.status === 'success') {
         setAnalytics(data.analytics);
       } else {
@@ -575,33 +486,154 @@ export default function CandidateMatchingSystem({
 
                   {/* Action Buttons */}
                   <div className="flex items-center space-x-2">
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => fetchDetailedAnalysis(candidate.student_id)}
-                          className="flex-1"
-                        >
-                          <Eye className="w-4 h-4 mr-1" />
-                          Analyze
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                        <DialogHeader>
-                          <DialogTitle>
-                            Detailed Match Analysis - {candidate.student?.profile?.full_name}
-                          </DialogTitle>
-                        </DialogHeader>
-                        {isLoadingAnalysis ? (
-                          <div className="flex items-center justify-center p-8">
-                            <RefreshCw className="w-6 h-6 animate-spin mr-2" />
-                            Loading detailed analysis...
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        setDialogOpenId(candidate.id);
+                        fetchDetailedAnalysis(candidate.student_id);
+                      }}
+                      className="flex-1"
+                    >
+                      <Eye className="w-4 h-4 mr-1" />
+                      Analyze
+                    </Button>
+
+                    <Dialog open={dialogOpenId === candidate.id} onOpenChange={(open) => { if(!open) { setDialogOpenId(null); setDetailedAnalysis(null); } }}>
+                      <DialogPortal>
+                        <DialogOverlay />
+                          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+                          <div className="max-w-7xl w-full max-h-[95vh] overflow-auto glass-panel rounded-lg p-6 flex flex-col">
+                          <div className="flex items-center justify-between mb-6 relative">
+                              <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-md gradient-primary flex items-center justify-center text-white font-semibold text-lg">{(candidate.student as any)?.profile?.full_name?.split(' ').map((n:string)=>n[0]).join('') || 'U'}</div>
+                              <div>
+                                <div className="text-2xl font-bold text-foreground">{(candidate.student as any)?.profile?.full_name || 'Unknown'}</div>
+                                <div className="text-sm text-foreground">Year {(candidate.student as any)?.year || 'N/A'} • {(candidate.student as any)?.department || 'N/A'}</div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button variant="ghost" onClick={() => { setDialogOpenId(null); setDetailedAnalysis(null); }}>Close</Button>
+                            </div>
+                            <button
+                              aria-label="Close"
+                              onClick={() => { setDialogOpenId(null); setDetailedAnalysis(null); }}
+                              className="absolute right-4 top-4 rounded-md p-2 hover:bg-white/10"
+                            >
+                              <X className="w-5 h-5 text-foreground" />
+                            </button>
                           </div>
-                        ) : detailedAnalysis && (
-                          <DetailedAnalysisView analysis={detailedAnalysis} />
-                        )}
-                      </DialogContent>
+
+                          <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-6">
+                            {/* Left column - contact & profiles */}
+                            <div className="lg:col-span-1 p-4 rounded-lg glass-panel border border-white/10">
+                              <div className="space-y-4">
+                                <div>
+                                    <div className="text-sm font-medium mb-1 text-foreground">Contact</div>
+                                    <div className="text-sm text-foreground">{(candidate.student as any)?.profile?.email || 'N/A'}</div>
+                                  </div>
+
+                                <div>
+                                  <div className="text-sm font-medium mb-1">Quick Stats</div>
+                                  <div className="text-sm">GPA: {(candidate.student as any)?.gpa || 'N/A'}</div>
+                                  <div className="text-sm">Match: {candidate.match_score}%</div>
+                                </div>
+
+                                <div>
+                                  <div className="text-sm font-medium mb-2 text-foreground">External Profiles</div>
+                                  <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2"><svg className="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M4.98 3.5C4.98 4.88 3.88 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1 4.98 2.12 4.98 3.5zM.5 8h4V24h-4V8zm7 0h3.7v2.2h.1c.5-.9 1.8-1.8 3.6-1.8 3.9 0 4.7 2.6 4.7 6V24h-4v-7.4c0-1.8 0-4.1-2.5-4.1-2.5 0-2.9 2-2.9 4v7.5h-4V8z"/></svg> <span className="text-sm">LinkedIn</span></div>
+                                      <div className="flex items-center gap-2">
+                                        {(candidate.student as any)?.linkedin_url ? (
+                                          <>
+                                            <a href={(candidate.student as any).linkedin_url} target="_blank" rel="noreferrer" className="text-primary text-sm">Open</a>
+                                            <Button variant="ghost" size="sm" onClick={async ()=>{ await navigator.clipboard.writeText((candidate.student as any).linkedin_url); toast({ title: 'Copied', description: 'LinkedIn URL copied' }); }}><Copy className="w-4 h-4"/></Button>
+                                          </>
+                                        ) : (<span className="text-xs text-muted-foreground">—</span>)}
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2"><svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 .5C5.7.5.6 5.6.6 11.9c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.2.8-.5v-1.9c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.1.1 1.7 1.1 1.7 1.1 1 .1 1.6.7 2 1.2.1-.8.4-1.4.8-1.7-2.6-.3-5.4-1.3-5.4-6A4.6 4.6 0 0 1 6.8 7c-.3-.7-1-2.8.1-5.8 0 0 .8-.3 2.7 1a9.3 9.3 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 1.2 3 .4 5.1.1 5.8a4.6 4.6 0 0 1 1.2 3.2c0 4.7-2.8 5.7-5.4 6 .4.4.7 1 .7 2v3c0 .3.2.6.8.5 4.6-1.5 7.9-5.8 7.9-10.9C23.4 5.6 18.3.5 12 .5z"/></svg> <span className="text-sm">GitHub</span></div>
+                                      <div className="flex items-center gap-2">
+                                        {(candidate.student as any)?.github_url ? (
+                                          <>
+                                            <a href={(candidate.student as any).github_url} target="_blank" rel="noreferrer" className="text-primary text-sm">Open</a>
+                                            <Button variant="ghost" size="sm" onClick={async ()=>{ await navigator.clipboard.writeText((candidate.student as any).github_url); toast({ title: 'Copied', description: 'GitHub URL copied' }); }}><Copy className="w-4 h-4"/></Button>
+                                          </>
+                                        ) : (<span className="text-xs text-muted-foreground">—</span>)}
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2"><svg className="w-5 h-5 text-amber-500" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M20.5 6.5L17 3 7 13h3l10.5-6.5zM6 15v6h6v-1H7v-5H6z"/></svg> <span className="text-sm">LeetCode</span></div>
+                                      <div className="flex items-center gap-2">
+                                        {(candidate.student as any)?.leetcode_url ? (
+                                          <>
+                                            <a href={(candidate.student as any).leetcode_url} target="_blank" rel="noreferrer" className="text-primary text-sm">Open</a>
+                                            <Button variant="ghost" size="sm" onClick={async ()=>{ await navigator.clipboard.writeText((candidate.student as any).leetcode_url); toast({ title: 'Copied', description: 'LeetCode URL copied' }); }}><Copy className="w-4 h-4"/></Button>
+                                          </>
+                                        ) : (<span className="text-xs text-muted-foreground">—</span>)}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Main column - summary, skills, experience, projects */}
+                            <div className="lg:col-span-3 p-4 rounded-lg glass-panel border border-white/8">
+                              <div className="space-y-6">
+                                <div>
+                                  <h4 className="text-lg font-semibold mb-2 text-foreground">Summary</h4>
+                                  <p className="text-sm text-foreground">{(candidate.student as any)?.summary || 'No summary available'}</p>
+                                </div>
+
+                                <div>
+                                  <h4 className="text-lg font-semibold mb-2 text-foreground">Skills</h4>
+                                  <div className="flex flex-wrap gap-2">
+                                    {Array.isArray((candidate.student as any)?.skills) && (candidate.student as any).skills.length > 0 ? (
+                                      (candidate.student as any).skills.map((s:string,i:number)=>(<Badge key={i} variant="secondary">{s}</Badge>))
+                                    ) : (
+                                      <div className="text-xs text-muted-foreground">No skills listed</div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <h4 className="text-lg font-semibold mb-2 text-foreground">Experience & Projects</h4>
+                                  <div className="text-sm text-foreground">
+                                    {(candidate.student as any)?.projects?.length ? (
+                                      (candidate.student as any).projects.map((p:any,i:number)=>(<div key={i} className="mb-2"><div className="font-medium">{p.title}</div><div className="text-xs text-foreground">{p.description}</div></div>))
+                                    ) : (
+                                      <div className="text-xs text-muted-foreground">No projects listed</div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <h4 className="text-lg font-semibold mb-2">Education</h4>
+                                  <div className="text-sm text-foreground">{(candidate.student as any)?.education || 'Not provided'}</div>
+                                </div>
+
+                                {/* Detailed analysis region */}
+                                <div>
+                                  <h4 className="text-lg font-semibold mb-2">Detailed Analysis</h4>
+                                  {isLoadingAnalysis ? (
+                                    <div className="flex items-center gap-2"><RefreshCw className="w-5 h-5 animate-spin"/> Loading...</div>
+                                  ) : detailedAnalysis ? (
+                                    <DetailedAnalysisView analysis={detailedAnalysis} />
+                                  ) : (
+                                    <div className="text-xs text-muted-foreground">No analysis available</div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          </div>
+                        </div>
+                      </DialogPortal>
                     </Dialog>
 
                     <Select 

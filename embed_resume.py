@@ -30,8 +30,8 @@ app.add_middleware(
 )
 
 # Configure these with your Supabase project details
-SUPABASE_URL = "https://vsgyopyvyeeqryzomtgq.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZzZ3lvcHl2eWVlcXJ5em9tdGdxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwOTgzNTksImV4cCI6MjA2MzY3NDM1OX0.oWmn5RIGTfxFiE9O-bUSNoSR7Rnl_rFwleUSR5QDqg4"
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 OLLAMA_URL = "http://localhost:11434/api/embeddings"
@@ -843,7 +843,8 @@ async def extract_resume_for_builder(
                 "phone": personal_info.get("phone", ""),
                 "address": personal_info.get("address", ""),
                 "linkedin": personal_info.get("linkedin", ""),
-                "github": personal_info.get("github", "")
+                "github": personal_info.get("github", ""),
+                "leetcode": personal_info.get("leetcode", "")
             },
             "education": education_details if education_details else [{
                 "degree": "",
@@ -896,6 +897,23 @@ async def extract_resume_for_builder(
                 update_data["tenth_percentage"] = academic_info["tenth_percentage"]
             if academic_info.get("twelfth_percentage"):
                 update_data["twelfth_percentage"] = academic_info["twelfth_percentage"]
+            
+            # Persist extracted profile URLs if present
+            if personal_info.get("linkedin"):
+                val = personal_info.get("linkedin")
+                if val and not val.startswith("http"):
+                    val = f"https://{val}"
+                update_data["linkedin_url"] = val
+            if personal_info.get("github"):
+                val = personal_info.get("github")
+                if val and not val.startswith("http"):
+                    val = f"https://{val}"
+                update_data["github_url"] = val
+            if personal_info.get("leetcode"):
+                val = personal_info.get("leetcode")
+                if val and not val.startswith("http"):
+                    val = f"https://{val}"
+                update_data["leetcode_url"] = val
             
             supabase.table("students").update(update_data).eq("id", student_id).execute()
             print("✅ Stored resume form data in Supabase (resume_form_data column)")
@@ -961,6 +979,12 @@ def extract_personal_info_from_text(text: str) -> dict:
     github = re.search(github_pattern, text.lower())
     if github:
         info["github"] = github.group()
+
+    # Extract LeetCode profile (common patterns: leetcode.com/u/<user> or leetcode.com/<user>)
+    leetcode_pattern = r'leetcode\.com\/(?:u\/)?[\w\-]+'
+    leetcode = re.search(leetcode_pattern, text.lower())
+    if leetcode:
+        info["leetcode"] = leetcode.group()
     
     # Extract name (usually in first few lines, capitalized)
     lines = text.split('\n')[:10]
@@ -1256,6 +1280,12 @@ async def embed_resume(
         print("ATS score calculation failed:", e)
         ats_score = 0
 
+    # Extract personal info (links) so we can persist profile URLs alongside other data
+    try:
+        personal_info = extract_personal_info_from_text(text)
+    except Exception:
+        personal_info = {}
+
     # 9. Store all extracted data in Supabase
     try:
         update_data = {
@@ -1275,6 +1305,22 @@ async def embed_resume(
             update_data["tenth_percentage"] = academic_info["tenth_percentage"]
         if academic_info.get("twelfth_percentage") is not None:
             update_data["twelfth_percentage"] = academic_info["twelfth_percentage"]
+        # Persist extracted profile URLs if present
+        if personal_info.get("linkedin"):
+            val = personal_info.get("linkedin")
+            if val and not val.startswith("http"):
+                val = f"https://{val}"
+            update_data["linkedin_url"] = val
+        if personal_info.get("github"):
+            val = personal_info.get("github")
+            if val and not val.startswith("http"):
+                val = f"https://{val}"
+            update_data["github_url"] = val
+        if personal_info.get("leetcode"):
+            val = personal_info.get("leetcode")
+            if val and not val.startswith("http"):
+                val = f"https://{val}"
+            update_data["leetcode_url"] = val
 
         response = supabase.table("students").update(
             update_data

@@ -55,7 +55,7 @@ export const useSessionCandidates = (sessionId: string) => {
       // Fetch students data
       const { data: students, error: studentsError } = await supabase
         .from('students')
-        .select('id, year, department, gpa, skills')
+        .select('id, year, department, gpa, skills, linkedin_url, github_url, leetcode_url, summary, projects, experience, ats_score, resume_url')
         .in('id', studentIds);
       
       if (studentsError) throw studentsError;

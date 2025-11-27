@@ -1,7 +1,9 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Mail, User, GraduationCap, Award, Eye } from 'lucide-react';
+import { FileText, Mail, User, GraduationCap, Award, Eye, ExternalLink, Copy } from 'lucide-react';
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 
 interface Student {
@@ -14,6 +16,9 @@ interface Student {
   resumeUrl: string;
   email: string;
   matchScore: number;
+  linkedin_url?: string | null;
+  github_url?: string | null;
+  leetcode_url?: string | null;
 }
 
 interface StudentCardProps {
@@ -24,6 +29,7 @@ interface StudentCardProps {
 
 const StudentCard = ({ student, isShortlisted, onShortlistToggle }: StudentCardProps) => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   const getMatchScoreColor = (score: number) => {
     if (score >= 90) return 'glass-panel border-accent/30 text-accent-foreground shadow-glow';
@@ -105,6 +111,110 @@ const StudentCard = ({ student, isShortlisted, onShortlistToggle }: StudentCardP
                 <Eye className="w-4 h-4 mr-2" />
                 View Details
               </Button>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="glass-button border-primary/30 hover:bg-primary/10 transition-all duration-300"
+                  >
+                    <Eye className="w-4 h-4 mr-2" />
+                    Analyze
+                  </Button>
+                </DialogTrigger>
+
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Candidate Profiles</DialogTitle>
+                    <DialogDescription>
+                      Quick access to public profiles extracted from the resume.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="space-y-4 mt-2">
+                    {/* LinkedIn */}
+                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 rounded-md gradient-primary flex items-center justify-center text-white">
+                          <ExternalLink className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium">LinkedIn</div>
+                          <div className="text-xs text-muted-foreground truncate max-w-[220px]">
+                            {student.linkedin_url || student.linkedin || 'Not available'}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {student.linkedin_url ? (
+                          <>
+                            <a href={student.linkedin_url} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline flex items-center">
+                              Open
+                            </a>
+                            <Button variant="ghost" size="sm" onClick={async () => { await navigator.clipboard.writeText(student.linkedin_url || ''); toast({ title: 'Copied', description: 'LinkedIn URL copied' }); }}>
+                              <Copy className="w-4 h-4" />
+                            </Button>
+                          </>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    {/* GitHub */}
+                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 rounded-md bg-gray-800 flex items-center justify-center text-white">
+                          <ExternalLink className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium">GitHub</div>
+                          <div className="text-xs text-muted-foreground truncate max-w-[220px]">
+                            {student.github_url || student.github || 'Not available'}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {student.github_url ? (
+                          <>
+                            <a href={student.github_url} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline flex items-center">
+                              Open
+                            </a>
+                            <Button variant="ghost" size="sm" onClick={async () => { await navigator.clipboard.writeText(student.github_url || ''); toast({ title: 'Copied', description: 'GitHub URL copied' }); }}>
+                              <Copy className="w-4 h-4" />
+                            </Button>
+                          </>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    {/* LeetCode */}
+                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 rounded-md bg-slate-800 flex items-center justify-center text-white">
+                          <ExternalLink className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium">LeetCode</div>
+                          <div className="text-xs text-muted-foreground truncate max-w-[220px]">
+                            {student.leetcode_url || 'Not available'}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {student.leetcode_url ? (
+                          <>
+                            <a href={student.leetcode_url} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline flex items-center">
+                              Open
+                            </a>
+                            <Button variant="ghost" size="sm" onClick={async () => { await navigator.clipboard.writeText(student.leetcode_url || ''); toast({ title: 'Copied', description: 'LeetCode URL copied' }); }}>
+                              <Copy className="w-4 h-4" />
+                            </Button>
+                          </>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
               <Button 
                 variant="outline" 
                 size="sm" 
