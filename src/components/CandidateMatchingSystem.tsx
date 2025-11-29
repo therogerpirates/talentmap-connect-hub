@@ -127,7 +127,6 @@ export default function CandidateMatchingSystem({
   const [bulkStatus, setBulkStatus] = useState<string>('');
   const [bulkNotes, setBulkNotes] = useState<string>('');
   const [detailedAnalysis, setDetailedAnalysis] = useState<DetailedAnalysis | null>(null);
-  const [analytics, setAnalytics] = useState<SessionAnalytics | null>(null);
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dialogOpenId, setDialogOpenId] = useState<string | null>(null);
@@ -174,25 +173,6 @@ export default function CandidateMatchingSystem({
     return 'Poor Match';
   };
 
-  const fetchSessionAnalytics = async () => {
-    try {
-      const response = await fetch(`/session-analytics/${sessionId}`);
-      const data = await response.json();
-
-      if (data.status === 'success') {
-        setAnalytics(data.analytics);
-      } else {
-        throw new Error(data.message);
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load session analytics",
-        variant: "destructive"
-      });
-    }
-  };
-
   const handleRefreshMatches = async () => {
     setIsRefreshing(true);
     try {
@@ -212,11 +192,6 @@ export default function CandidateMatchingSystem({
     }
   };
 
-  // Load analytics on component mount
-  useEffect(() => {
-    fetchSessionAnalytics();
-  }, [sessionId]);
-
   // Status distribution for quick stats (excluding applied)
   const statusCounts = candidates.filter(c => c.status !== 'applied').reduce((acc, candidate) => {
     acc[candidate.status] = (acc[candidate.status] || 0) + 1;
@@ -225,81 +200,8 @@ export default function CandidateMatchingSystem({
 
   return (
     <div className="space-y-6">
-      {/* Header with Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-600 text-sm font-medium">Total Candidates</p>
-                <p className="text-2xl font-bold text-blue-800">{candidates.length}</p>
-              </div>
-              <Users className="w-8 h-8 text-blue-500" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-gradient-to-r from-green-50 to-green-100 border-green-200">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-green-600 text-sm font-medium">Shortlisted</p>
-                <p className="text-2xl font-bold text-green-800">{statusCounts.shortlisted || 0}</p>
-              </div>
-              <Star className="w-8 h-8 text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-yellow-50 to-yellow-100 border-yellow-200">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-yellow-600 text-sm font-medium">Waitlisted</p>
-                <p className="text-2xl font-bold text-yellow-800">{statusCounts.waitlisted || 0}</p>
-              </div>
-              <Clock className="w-8 h-8 text-yellow-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-purple-50 to-purple-100 border-purple-200">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-purple-600 text-sm font-medium">Hired</p>
-                <p className="text-2xl font-bold text-purple-800">{statusCounts.hired || 0}</p>
-              </div>
-              <UserCheck className="w-8 h-8 text-purple-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-red-50 to-red-100 border-red-200">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-red-600 text-sm font-medium">Rejected</p>
-                <p className="text-2xl font-bold text-red-800">{statusCounts.rejected || 0}</p>
-              </div>
-              <UserX className="w-8 h-8 text-red-500" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Tabs for different views */}
       <Tabs defaultValue="candidates" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="candidates" className="flex items-center space-x-2">
-            <Users className="w-4 h-4" />
-            <span>Candidates</span>
-          </TabsTrigger>
-          <TabsTrigger value="analytics" className="flex items-center space-x-2">
-            <BarChart3 className="w-4 h-4" />
-            <span>Analytics</span>
-          </TabsTrigger>
-        </TabsList>
 
         <TabsContent value="candidates" className="space-y-4">
           {/* Controls */}
@@ -503,7 +405,7 @@ export default function CandidateMatchingSystem({
                       <DialogPortal>
                         <DialogOverlay />
                           <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-                          <div className="max-w-7xl w-full max-h-[95vh] overflow-auto glass-panel rounded-lg p-6 flex flex-col">
+                          <div className="max-w-7xl w-full max-h-[95vh] overflow-auto glass-panel rounded-lg p-6 flex flex-col bg-blue-50">
                           <div className="flex items-center justify-between mb-6 relative">
                               <div className="flex items-center gap-4">
                               <div className="w-12 h-12 rounded-md gradient-primary flex items-center justify-center text-white font-semibold text-lg">{(candidate.student as any)?.profile?.full_name?.split(' ').map((n:string)=>n[0]).join('') || 'U'}</div>
@@ -512,15 +414,14 @@ export default function CandidateMatchingSystem({
                                 <div className="text-sm text-foreground">Year {(candidate.student as any)?.year || 'N/A'} • {(candidate.student as any)?.department || 'N/A'}</div>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Button variant="ghost" onClick={() => { setDialogOpenId(null); setDetailedAnalysis(null); }}>Close</Button>
+                            <div className="flex items-center">
+                              <Button variant="ghost" onClick={() => { setDialogOpenId(null); setDetailedAnalysis(null); }}><X></X></Button>
                             </div>
                             <button
                               aria-label="Close"
                               onClick={() => { setDialogOpenId(null); setDetailedAnalysis(null); }}
                               className="absolute right-4 top-4 rounded-md p-2 hover:bg-white/10"
                             >
-                              <X className="w-5 h-5 text-foreground" />
                             </button>
                           </div>
 
@@ -664,19 +565,6 @@ export default function CandidateMatchingSystem({
               </Card>
             )}
           </div>
-        </TabsContent>
-
-        <TabsContent value="analytics" className="space-y-4">
-          {analytics ? (
-            <SessionAnalyticsView analytics={analytics} />
-          ) : (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-4" />
-                <p>Loading analytics...</p>
-              </CardContent>
-            </Card>
-          )}
         </TabsContent>
       </Tabs>
     </div>

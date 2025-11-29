@@ -26,20 +26,6 @@ export const DashboardStats = ({ sessions }: DashboardStatsProps) => {
       gradient: 'gradient-primary',
       description: 'All time sessions'
     },
-    {
-      title: 'Successful Hires',
-      value: totalHires,
-      icon: Users,
-      gradient: 'gradient-primary',
-      description: 'Students hired'
-    },
-    {
-      title: 'Completed Sessions',
-      value: completedSessions,
-      icon: CheckCircle,
-      gradient: 'gradient-primary',
-      description: 'Target achieved'
-    },
   ];
 
   return (
