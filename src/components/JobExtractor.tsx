@@ -41,7 +41,7 @@ export const JobExtractor = ({ onExtraction, initialDescription = '', sessionId 
     }
 
     setIsExtracting(true);
-    
+
     try {
       const response = await fetch('http://localhost:8000/extract-job-info/', {
         method: 'POST',
@@ -59,7 +59,7 @@ export const JobExtractor = ({ onExtraction, initialDescription = '', sessionId 
       }
 
       const data = await response.json();
-      
+
       if (data.status === 'success') {
         const extractedInfo = data.extracted_data;
         const extracted: ExtractedJobInfo = {
@@ -72,10 +72,10 @@ export const JobExtractor = ({ onExtraction, initialDescription = '', sessionId 
           },
           eligible_years: extractedInfo.eligible_years || []
         };
-        
+
         setExtractedData(extracted);
         onExtraction(extracted);
-        
+
         toast({
           title: "Extraction Successful!",
           description: `Found ${extracted.required_skills.length} skills and ${extracted.eligibility_criteria.specific_requirements.length} requirements`,
@@ -112,61 +112,63 @@ export const JobExtractor = ({ onExtraction, initialDescription = '', sessionId 
 
   return (
     <div className="space-y-6">
-      {/* Job Description Input */}
-      <Card className="glass-panel border-0 shadow-glass relative overflow-hidden">
-        <div className="absolute inset-0 gradient-glass opacity-30"></div>
-        <CardHeader className="relative z-10">
-          <CardTitle className="flex items-center space-x-3">
-            <div className="h-10 w-10 gradient-primary rounded-xl flex items-center justify-center shadow-glow">
-              <Brain className="h-5 w-5 text-white" />
+      {/* Job Description Input - Redesigned Card */}
+      <Card className="bg-white dark:bg-slate-800 border-none shadow-sm relative overflow-hidden">
+        <CardHeader className="pb-4">
+          <div className="flex items-start gap-4">
+            <div className="h-12 w-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center shrink-0">
+              <Sparkles className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             </div>
-            <div>
-              <span className="text-xl font-bold">AI Job Analysis</span>
-              <p className="text-sm text-muted-foreground font-normal">
+            <div className="space-y-1">
+              <CardTitle className="text-xl font-bold text-slate-900 dark:text-white">AI Job Analysis</CardTitle>
+              <p className="text-base text-slate-500 dark:text-slate-400 font-normal">
                 Paste your job description to automatically extract requirements
               </p>
             </div>
-          </CardTitle>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-4 relative z-10">
-          <div>
-            <Label htmlFor="job-description">Job Description</Label>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="job-description" className="text-sm font-semibold text-slate-700 dark:text-slate-300">Job Description</Label>
             <Textarea
               id="job-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Paste your complete job description here. Include requirements, qualifications, skills needed, and any specific criteria..."
-              className="min-h-[200px] resize-none"
+              className="min-h-[250px] resize-none bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 focus:ring-blue-500 text-base"
             />
           </div>
-          
-          <div className="flex space-x-3">
-            <Button 
-              onClick={handleExtraction} 
+
+          <div className="pt-2">
+            <Button
+              onClick={handleExtraction}
               disabled={isExtracting || !description.trim()}
-              className="gradient-primary text-white flex-1"
+              className="w-full h-12 bg-blue-500 hover:bg-blue-600 text-white font-semibold text-lg shadow-md shadow-blue-200 transition-all hover:scale-[1.01]"
             >
               {isExtracting ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Analyzing...
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                  Analyzing Job Description...
                 </>
               ) : (
                 <>
-                  <Sparkles className="h-4 w-4 mr-2" />
+                  <Sparkles className="h-5 w-5 mr-2" />
                   Extract Requirements
                 </>
               )}
             </Button>
-            
+
             {extractedData && (
-              <Button 
-                variant="outline" 
-                onClick={handleClearExtraction}
-                className="px-4"
-              >
-                Clear
-              </Button>
+              <div className="mt-4 flex justify-end">
+                <Button
+                  variant="ghost"
+                  onClick={handleClearExtraction}
+                  className="text-slate-500 hover:text-red-500"
+                  size="sm"
+                >
+                  Clear Analysis
+                </Button>
+              </div>
             )}
           </div>
         </CardContent>

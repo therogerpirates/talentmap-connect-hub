@@ -38,7 +38,7 @@ const ResumeUpload = ({ onUploadSuccess, hasExistingResume = false }: ResumeUplo
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    
+
     const files = Array.from(e.dataTransfer.files);
     handleFileSelection(files);
   };
@@ -52,7 +52,7 @@ const ResumeUpload = ({ onUploadSuccess, hasExistingResume = false }: ResumeUplo
     if (files.length === 0) return;
 
     const file = files[0];
-    
+
     // Validate file type
     if (file.type !== 'application/pdf') {
       toast({
@@ -80,12 +80,12 @@ const ResumeUpload = ({ onUploadSuccess, hasExistingResume = false }: ResumeUplo
     if (e) {
       e.preventDefault();
     }
-    
+
     if (!selectedFile || !user) return;
 
     setIsUploading(true);
     setShowUploadDialog(false); // Close dialog when upload starts
-    
+
     try {
       // Create unique filename
       const fileExt = selectedFile.name.split('.')?.pop();
@@ -145,13 +145,13 @@ const ResumeUpload = ({ onUploadSuccess, hasExistingResume = false }: ResumeUplo
       if (!embedResponse.ok) {
         const errorData = await embedResponse.json().catch(() => ({}));
         console.error('Embedding failed:', errorData);
-        // Don't throw error, just log it
+        throw new Error(errorData.detail || 'Resume analysis failed. Please try again.');
       }
       // --- END NEW ---
-      
+
       setUploadStatus('success');
       onUploadSuccess(true);
-      
+
       toast({
         title: "Upload Successful!",
         description: "Your resume has been uploaded and is being analyzed. Please wait for the analysis to complete."
@@ -245,7 +245,7 @@ const ResumeUpload = ({ onUploadSuccess, hasExistingResume = false }: ResumeUplo
             <X className="w-4 h-4" />
           </Button>
         </div>
-        
+
         <div className="flex space-x-3">
           <Button onClick={handleUpload} className="flex-1" disabled={isUploading}>
             {isUploading ? 'Uploading...' : 'Upload Resume'}
@@ -295,102 +295,128 @@ const ResumeUpload = ({ onUploadSuccess, hasExistingResume = false }: ResumeUplo
   }
 
   return (
-    <div className="space-y-4">
-      {hasExistingResume ? (
-        <div className="text-center p-6 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 transition-colors duration-300">
-          <FileText className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-4 transition-colors duration-300" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2 transition-colors duration-300">Resume Uploaded</h3>
-          <p className="text-sm text-gray-500 dark:text-white-400 mb-4 transition-colors duration-300">
-            Your resume is currently visible to recruiters
-          </p>
-          <Button
-            variant="outline"
-            onClick={() => setShowUploadDialog(true)}
-            className="text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-300"
-          >
-            Update Resume
-          </Button>
-        </div>
-      ) : (
-        <div className="text-center p-6 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 transition-colors duration-300">
-          <Upload className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-4 transition-colors duration-300" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2 transition-colors duration-300">Upload Your Resume</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 transition-colors duration-300">
-            Upload your resume to get discovered by recruiters
-          </p>
-          <Button
-            onClick={() => setShowUploadDialog(true)}
-            className="gradient-primary text-white"
-          >
-            Upload Resume
-          </Button>
-        </div>
-      )}
-
+    <div className="h-full">
       <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
-        <DialogContent className="bg-white dark:bg-gray-800 transition-colors duration-300">
+        <DialogContent className="bg-white dark:bg-slate-800 sm:max-w-md transition-all">
           <DialogHeader>
-            <DialogTitle className="text-gray-900 dark:text-white transition-colors duration-300">
-              {hasExistingResume ? 'Update Resume' : 'Upload Resume'}
-            </DialogTitle>
-            <DialogDescription className="text-gray-600 dark:text-gray-300 transition-colors duration-300">
-              {hasExistingResume 
-                ? 'Upload a new version of your resume to update your profile.'
-                : 'Upload your resume to get discovered by recruiters.'}
+            <DialogTitle>{hasExistingResume ? 'Update Resume' : 'Upload Resume'}</DialogTitle>
+            <DialogDescription>
+              Choose a PDF file to update your profile.
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            if (selectedFile) {
-              handleUpload(e);
-            }
-          }} className="space-y-4">
+          <form onSubmit={(e) => { e.preventDefault(); if (selectedFile) handleUpload(e); }} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="resume" className="text-gray-900 dark:text-white transition-colors duration-300">Resume File</Label>
-              <Input
-                ref={fileInputRef}
-                id="resume"
-                type="file"
-                accept=".pdf,.doc,.docx"
-                onChange={handleFileInput}
-                className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 transition-colors duration-300"
-              />
-              <p className="text-sm text-gray-500 dark:text-gray-400 transition-colors duration-300">
-                Accepted formats: PDF, DOC, DOCX (Max size: 5MB)
-              </p>
+              <div className="flex items-center justify-center w-full">
+                <label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-300 border-dashed rounded-lg cursor-pointer bg-slate-50 hover:bg-slate-100 dark:bg-slate-700 dark:border-slate-600 dark:hover:border-slate-500 dark:hover:bg-slate-600 transition-colors">
+                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                    <Upload className="w-8 h-8 mb-2 text-slate-400" />
+                    <p className="text-sm text-slate-500 dark:text-slate-400"><span className="font-semibold">Click to upload</span> or drag and drop</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">PDF (MAX. 10MB)</p>
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    id="dropzone-file"
+                    type="file"
+                    className="hidden"
+                    accept=".pdf"
+                    onChange={handleFileInput}
+                  />
+                </label>
+              </div>
               {selectedFile && (
-                <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-800">
-                  <p className="text-sm text-green-700 dark:text-green-300">
-                    ✓ Selected: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
-                  </p>
+                <div className="flex items-center p-2 text-sm text-green-700 bg-green-100 rounded-lg dark:bg-green-800 dark:text-green-200">
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  <span className="truncate max-w-[200px]">{selectedFile.name}</span>
+                  <span className="ml-2 opacity-70">({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)</span>
                 </div>
               )}
             </div>
 
             <div className="flex justify-end space-x-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setShowUploadDialog(false);
-                  setSelectedFile(null);
-                }}
-                className="text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-300"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={isUploading || !selectedFile}
-                className="bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors duration-300"
-              >
+              <Button type="button" variant="ghost" onClick={() => setShowUploadDialog(false)}>Cancel</Button>
+              <Button type="submit" disabled={!selectedFile || isUploading}>
                 {isUploading ? 'Uploading...' : 'Upload'}
               </Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Main Display Area matching the Wireframe */}
+      <div className="h-full min-h-[400px] flex items-center justify-center p-8 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl bg-white dark:bg-slate-900/50 text-center">
+
+        {/* Uploading State */}
+        {(uploadStatus === 'uploading' || isUploading) && (
+          <div className="space-y-4 animate-in fade-in zoom-in duration-300">
+            <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto">
+              <Upload className="w-8 h-8 text-blue-600 animate-bounce" />
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold text-slate-900 dark:text-white">Uploading...</h3>
+              <p className="text-slate-500"> analyzing your resume</p>
+            </div>
+          </div>
+        )}
+
+        {/* Success / Preview State (Temporary) */}
+        {uploadStatus === 'success' && !isUploading && (
+          <div className="space-y-4 animate-in fade-in zoom-in duration-300">
+            <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto">
+              <CheckCircle className="w-8 h-8 text-green-600" />
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold text-slate-900 dark:text-white">Analysis Complete!</h3>
+              <p className="text-slate-500 max-w-xs mx-auto">Your profile has been updated with the extracted information.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Idle / Existing Resume State */}
+        {uploadStatus === 'idle' && !isUploading && (
+          <div className="space-y-6 max-w-md mx-auto">
+            {hasExistingResume ? (
+              <>
+                <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <FileText className="w-10 h-10 text-slate-600 dark:text-slate-300" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Resume Uploaded</h3>
+                  <p className="text-slate-500 dark:text-slate-400">
+                    Your resume is currently visible to recruiters
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  className="mt-4 border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  onClick={() => setShowUploadDialog(true)}
+                >
+                  Update Resume
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-slate-200 transition-colors">
+                  <Upload className="w-10 h-10 text-slate-400 dark:text-slate-500" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Upload Your Resume</h3>
+                  <p className="text-slate-500 dark:text-slate-400">
+                    Upload (PDF) to extract skills and get AI insights
+                  </p>
+                </div>
+                <Button
+                  className="mt-4 bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900"
+                  onClick={() => setShowUploadDialog(true)}
+                >
+                  Select File
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+
+      </div>
     </div>
   );
 };

@@ -32,7 +32,7 @@ const Login = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.email || !formData.password) {
       toast({
         title: "Error",
@@ -69,7 +69,7 @@ const Login = () => {
         if (profile?.role === 'admin') {
           navigate('/admin-dashboard');
         } else {
-          navigate('/student-dashboard');
+          navigate('/student-details');
         }
       }
     } catch (error: any) {
@@ -85,7 +85,7 @@ const Login = () => {
 
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!resetEmail) {
       toast({
         title: "Error",
@@ -108,7 +108,7 @@ const Login = () => {
         title: "Reset Email Sent",
         description: "Check your email for the password reset link"
       });
-      
+
       setIsResetDialogOpen(false);
       setResetEmail('');
     } catch (error: any) {
@@ -135,7 +135,7 @@ const Login = () => {
       <div className="absolute top-4 right-4 z-50">
         <ThemeToggle />
       </div>
-      
+
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -154,7 +154,7 @@ const Login = () => {
               Sign in to your TalentMap account
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
@@ -170,7 +170,7 @@ const Login = () => {
                   className="mt-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 transition-colors duration-300"
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="password" className="text-gray-900 dark:text-white transition-colors duration-300">Password</Label>
                 <div className="relative">
@@ -224,8 +224,8 @@ const Login = () => {
                           className="mt-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 transition-colors duration-300"
                         />
                       </div>
-                      <Button 
-                        type="submit" 
+                      <Button
+                        type="submit"
                         className="w-full bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors duration-300"
                         disabled={isResetLoading}
                       >
@@ -236,8 +236,8 @@ const Login = () => {
                 </Dialog>
               </div>
 
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full bg-black dark:bg-white text-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors duration-300"
                 disabled={isLoading}
               >

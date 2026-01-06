@@ -1,46 +1,46 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, Filter, X, Download, UserPlus, Loader2 } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
 import { useStudentsSearch } from '@/hooks/useStudentsSearch';
 import { useToast } from '@/hooks/use-toast';
 import StudentCard from '@/components/StudentCard';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+interface SearchSessionProps {
+  id: string;
+  title: string;
+  role: string;
+}
 
 interface StudentSearchProps {
   onAddToSession?: (studentId: string, sessionId: string) => void;
-  selectedSessionId?: string;
+  selectedSessionId?: string | null;
+  activeSessions?: SearchSessionProps[];
+  onSessionSelect?: (sessionId: string | null) => void;
 }
 
-export const StudentSearch = ({ onAddToSession, selectedSessionId }: StudentSearchProps) => {
+export const StudentSearch = ({
+  onAddToSession,
+  selectedSessionId,
+  activeSessions = [],
+  onSessionSelect
+}: StudentSearchProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState('');
   const [shortlistedCandidates, setShortlistedCandidates] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  
+
   const { toast } = useToast();
   const { data: searchResults, refetch: performSearch } = useStudentsSearch(searchQuery, selectedSkills);
-
-  const commonSkills = [
-    'React', 'JavaScript', 'TypeScript', 'Python', 'Java', 'C++', 'Node.js',
-    'SQL', 'MongoDB', 'AWS', 'Docker', 'Kubernetes', 'Machine Learning',
-    'Data Science', 'UI/UX', 'Graphic Design', 'Project Management'
-  ];
-
-  const filteredSkills = skillInput === ''
-    ? commonSkills
-    : commonSkills.filter((skill) =>
-        skill.toLowerCase().includes(skillInput.toLowerCase())
-      );
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim() && selectedSkills.length === 0) {
       toast({
         title: "Please enter a search query or select skills",
-        description: "Describe the skills or qualifications you're looking for",
         variant: "destructive"
       });
       return;
@@ -70,7 +70,7 @@ export const StudentSearch = ({ onAddToSession, selectedSessionId }: StudentSear
   };
 
   const handleShortlistToggle = (studentId: string) => {
-    setShortlistedCandidates(prev => 
+    setShortlistedCandidates(prev =>
       prev.includes(studentId)
         ? prev.filter(id => id !== studentId)
         : [...prev, studentId]
@@ -87,163 +87,135 @@ export const StudentSearch = ({ onAddToSession, selectedSessionId }: StudentSear
     }
   };
 
+  const handleClearSession = () => {
+    if (onSessionSelect) {
+      onSessionSelect(null);
+    }
+  };
+
   return (
     <div className="space-y-8">
-      {/* Search Form */}
-      <Card className="glass-panel border-0 shadow-glass relative overflow-hidden sticky top-4 z-50">
-        <div className="absolute inset-0 gradient-glass opacity-30"></div>
-        <CardHeader className="relative z-10">
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="h-12 w-12 gradient-primary rounded-2xl flex items-center justify-center shadow-glow">
-                <Search className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <span className="text-2xl font-bold">Student Search</span>
-                <p className="text-muted-foreground text-sm">Find and recruit top talent</p>
-              </div>
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6 relative z-10">
-          <form onSubmit={handleSearch} className="space-y-6">
-            <div className="space-y-3">
-              <Input
-                placeholder="Describe the role or skills you're looking for..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="text-lg py-4 glass-button border-primary/30 focus:border-primary/50 transition-all duration-300"
-              />
-            </div>
+      {/* Search Form Area */}
+      <form onSubmit={handleSearch} className="space-y-6">
+        <div className="grid md:grid-cols-2 gap-8">
+          {/* Search Candidates Input */}
+          <div className="space-y-2">
+            <label className="text-base font-bold text-foreground">Search Candidates</label>
+            <Input
+              placeholder="Describe the role or skills you're looking for..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-12 border-input bg-background/50 text-base"
+            />
+          </div>
 
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3 glass-button px-4 py-2 rounded-lg">
-                <Filter className="h-5 w-5 text-primary" />
-                <span className="text-base font-medium">Skills Filter</span>
-              </div>
-              
-              <Input
-                placeholder="Add specific skills (press Enter)"
-                value={skillInput}
-                onChange={(e) => setSkillInput(e.target.value)}
-                onKeyDown={handleSkillInputKeyDown}
-                className="text-base py-3 glass-button border-primary/30 focus:border-primary/50 transition-all duration-300"
-              />
+          {/* Skills Filter Input */}
+          <div className="space-y-2">
+            <label className="text-base font-bold text-foreground">Skills Filter</label>
+            <Input
+              placeholder="Add specific skills (press Enter)"
+              value={skillInput}
+              onChange={(e) => setSkillInput(e.target.value)}
+              onKeyDown={handleSkillInputKeyDown}
+              className="h-12 border-input bg-background/50 text-base"
+            />
+          </div>
+        </div>
 
-              {selectedSkills.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {selectedSkills.map((skill) => (
-                    <Badge key={skill} variant="secondary" className="px-3 py-1">
-                      {skill}
-                      <X
-                        className="h-3 w-3 ml-2 cursor-pointer"
-                        onClick={() => removeSkill(skill)}
-                      />
-                    </Badge>
-                  ))}
-                </div>
-              )}
+        {/* Selected Skills */}
+        {selectedSkills.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {selectedSkills.map((skill) => (
+              <Badge key={skill} variant="secondary" className="px-3 py-1 gap-1">
+                {skill}
+                <X
+                  className="h-3 w-3 cursor-pointer hover:text-destructive"
+                  onClick={() => removeSkill(skill)}
+                />
+              </Badge>
+            ))}
+          </div>
+        )}
 
-              {skillInput && filteredSkills.length > 0 && (
-                <div className="border rounded-md p-2 bg-card">
-                  <div className="text-xs text-muted-foreground mb-2">Suggested skills:</div>
-                  <div className="flex flex-wrap gap-1">
-                    {filteredSkills.slice(0, 8).map((skill) => (
-                      <Badge
-                        key={skill}
-                        variant="outline"
-                        className="cursor-pointer text-xs hover:bg-primary hover:text-primary-foreground"
-                        onClick={() => {
-                          if (!selectedSkills.includes(skill)) {
-                            setSelectedSkills([...selectedSkills, skill]);
-                          }
-                          setSkillInput('');
-                        }}
-                      >
-                        {skill}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-              <Button 
-                type="submit" 
-                disabled={isSearching}
-                className="w-full gradient-primary text-white border-0 shadow-glow hover:scale-80 transition-all duration-300 py-4 text-lg font-semibold"
-              >
-                {isSearching ? (
-                  <>
-                    <Loader2 className="h-5 w-5 mr-3 animate-spin" />
-                    Searching for talent...
-                  </>
-                ) : (
-                  <>
-                    <Search className="h-5 w-5 mr-3" />
-                    Search Students
-                  </>
-                )}
-              </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Search Results */}
-      {searchResults && searchResults.length > 0 && (
-        <Card className="glass-panel border-0 shadow-glass relative overflow-hidden">
-          <div className="absolute inset-0 gradient-glass opacity-20"></div>
-          <CardHeader className="flex flex-row items-center justify-between relative z-10">
-            <CardTitle className="text-2xl font-bold">Search Results ({searchResults.length})</CardTitle>
-            <div className="flex space-x-2">
-              {shortlistedCandidates.length > 0 && (
-                <Badge variant="secondary" className="px-3 py-1">
-                  {shortlistedCandidates.length} shortlisted
-                </Badge>
-              )}
-              <Button variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Download CSV
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="relative z-10">
-            <div className="grid md:grid-cols-2 gap-6">
-              {searchResults.map((student, index) => (
-                <div key={student.id} className="relative fade-in-up" style={{animationDelay: `${0.05 * index}s`}}>
-                  <StudentCard
-                    student={student}
-                    isShortlisted={shortlistedCandidates.includes(student.id)}
-                    onShortlistToggle={() => handleShortlistToggle(student.id)}
-                  />
-                  {onAddToSession && selectedSessionId && (
-                    <div className="absolute top-4 right-4">
-                      <Button
-                        size="sm"
-                        onClick={() => handleAddToSession(student.id)}
-                        className="gradient-primary text-white border-0 shadow-glow hover:scale-110 transition-transform duration-300"
-                      >
-                        <UserPlus className="h-4 w-4" />
-                      </Button>
+        {/* Actions Row */}
+        <div className="flex items-center gap-6">
+          {/* Add to Session Dropdown */}
+          <div className="flex items-center gap-4">
+            {activeSessions.length > 0 && onSessionSelect && (
+              <div className="w-64">
+                <label className="text-sm font-bold text-foreground block mb-1">Add to Session (Optional)</label>
+                <Select
+                  value={selectedSessionId || ''}
+                  onValueChange={(val) => onSessionSelect(val)}
+                >
+                  <SelectTrigger className="w-full border-none shadow-none p-0 h-auto text-base font-semibold focus:ring-0">
+                    <div className="flex items-center gap-2">
+                      <span>{selectedSessionId ? activeSessions.find(s => s.id === selectedSessionId)?.title : 'Select Session'}</span>
+                      {/* Chevron is automatic in Select trigger usually, but if we custom styled it... */}
                     </div>
-                  )}
-                </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeSessions.map((session) => (
+                      <SelectItem key={session.id} value={session.id}>
+                        {session.title} - {session.role}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={handleClearSession}
+              className="text-sm font-bold mt-6 hover:underline"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+
+        {/* Search Button */}
+        <div>
+          <Button
+            type="submit"
+            disabled={isSearching}
+            className="px-8 py-2 h-10 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-md shadow-sm"
+          >
+            {isSearching ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Searching...
+              </>
+            ) : (
+              "Search"
+            )}
+          </Button>
+        </div>
+      </form>
+
+      {/* Search Results Grid */}
+      {searchResults && (
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold">Search Results {searchResults.length > 0 && `(${searchResults.length})`}</h2>
+
+          {searchResults.length > 0 ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {searchResults.map((student) => (
+                <StudentCard
+                  key={student.id}
+                  student={student}
+                  isShortlisted={shortlistedCandidates.includes(student.id)}
+                  onShortlistToggle={() => handleShortlistToggle(student.id)}
+                />
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {searchResults && searchResults.length === 0 && (
-        <Card className="glass-panel border-0 shadow-glass">
-          <CardContent className="py-16 text-center">
-            <Search className="h-16 w-16 text-primary mx-auto mb-6 opacity-50 float-animation" />
-            <h3 className="text-2xl font-bold mb-3">No students found</h3>
-            <p className="text-muted-foreground text-lg max-w-md mx-auto">
-              Try adjusting your search query or skill filters to discover more candidates
-            </p>
-          </CardContent>
-        </Card>
+          ) : (
+            <div className="py-12 text-center text-muted-foreground bg-muted/30 rounded-lg">
+              No candidates found matching your criteria.
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

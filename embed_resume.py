@@ -209,17 +209,57 @@ def extract_projects_from_text(text: str) -> list[str]:
         r'academic\s*projects?[:\s]*\n(.*?)(?=\n\s*[A-Z][^:\n]*:|$)'
     ]
     
+    project_block = ""
     for pattern in project_section_patterns:
-        matches = re.findall(pattern, text, re.IGNORECASE | re.DOTALL)
-        for match in matches:
-            # Split by bullet points or line breaks
-            project_lines = re.split(r'[•\-\*]\s*|(?:\n\s*)+', match.strip())
-            for line in project_lines:
-                line = line.strip()
-                if len(line) > 20:  # Filter out short lines
-                    projects.append(line)
-    
-    # If no structured project section found, look for project-like descriptions
+        match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+        if match:
+            project_block = match.group(1).strip()
+            break
+            
+    if project_block:
+        lines = project_block.split('\n')
+        current_project = []
+        
+        # bullet_pattern = r'^[\s]*[•\-\*–]' # Regex for checking if line is a bullet
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+                
+            is_bullet = line.startswith(('•', '-', '*', '–')) or re.match(r'^[\s]*[•\-\*–]', line)
+            
+            if is_bullet:
+                # Append to current project
+                current_project.append(line)
+            else:
+                # Not a bullet. 
+                # If we have a current project and the LAST line we added was a bullet,
+                # then this new non-bullet line is likely a NEW project name.
+                # If the last line was NOT a bullet (i.e., it was a title/text), then this might be a 
+                # multi-line title or continuation of description text.
+                
+                # Check if we should start a new project
+                should_start_new = False
+                if current_project:
+                    last_line = current_project[-1]
+                    last_was_bullet = last_line.startswith(('•', '-', '*', '–')) or re.match(r'^[\s]*[•\-\*–]', last_line)
+                    if last_was_bullet:
+                        should_start_new = True
+                
+                if should_start_new:
+                    # Save current project
+                    projects.append("\n".join(current_project))
+                    current_project = [line]
+                else:
+                    # Continue current project (or start first one)
+                    current_project.append(line)
+                    
+        # Append the last project
+        if current_project:
+            projects.append("\n".join(current_project))
+
+    # If parsing failed or returned nothing, fall back to simple keyword search
     if not projects:
         # Look for lines that might be project descriptions
         project_keywords = ['built', 'developed', 'created', 'designed', 'implemented', 'application', 'system', 'platform', 'website', 'app']

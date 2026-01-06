@@ -24,9 +24,9 @@ export const useStudentsSearch = (searchQuery?: string, selectedSkills: string[]
       const response = await fetch('http://localhost:8000/search-students/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           query: searchQuery,
-          skills: selectedSkills 
+          skills: selectedSkills
         }),
       });
       if (!response.ok) {

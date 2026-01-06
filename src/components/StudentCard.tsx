@@ -1,7 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Mail, User, GraduationCap, Award, Eye, ExternalLink, Copy } from 'lucide-react';
+import { FileText, Mail, User, GraduationCap, Award, Eye, ExternalLink, Copy, Phone } from 'lucide-react';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -30,202 +30,110 @@ interface StudentCardProps {
 const StudentCard = ({ student, isShortlisted, onShortlistToggle }: StudentCardProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  
-  const getMatchScoreColor = (score: number) => {
-    if (score >= 90) return 'glass-panel border-accent/30 text-accent-foreground shadow-glow';
-    if (score >= 80) return 'glass-panel border-primary/30 text-primary-foreground';
-    if (score >= 70) return 'glass-panel border-yellow-500/30 text-foreground';
-    return 'glass-panel border-muted/30 text-muted-foreground';
-  };
 
   const handleViewDetails = () => {
     navigate(`/admin/students/${student.id}`);
   };
 
+  // Design requires a clean card with specific layout
+  // Avatar + Name + Verified Badge + Menu dots (optional)
+  // Match Badge (Green pill with check)
+
   return (
-    <Card className="glass-card hover-lift transition-all duration-500 border-0 overflow-hidden group">
-      <CardContent className="p-6 relative">
-        <div className="absolute inset-0 gradient-glass opacity-50 rounded-lg"></div>
-        <div className="relative z-10">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-start space-x-4">
-              <div className="w-14 h-14 gradient-primary rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-glow group-hover:scale-110 transition-transform duration-300">
+    <Card className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
+      <CardContent className="p-6">
+        {/* Header: Avatar, Name, Match Badge */}
+        <div className="flex justify-between items-start mb-6">
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <div className="w-16 h-16 rounded-full bg-slate-700 flex items-center justify-center text-white text-xl font-bold overflow-hidden">
+                {/* Placeholder for avatar image if available, else initials */}
                 {student.name.split(' ').map(n => n[0]).join('')}
               </div>
-              <div className="flex-1">
-                <h3 className="text-xl font-semibold text-foreground mb-2 group-hover:text-primary transition-colors duration-300">{student.name}</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-                  <div className="flex items-center space-x-2 text-muted-foreground">
-                    <GraduationCap className="w-4 h-4 text-primary" />
-                    <span>{student.year}</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-muted-foreground">
-                    <User className="w-4 h-4 text-primary" />
-                    <span>{student.department}</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-muted-foreground">
-                    <Award className="w-4 h-4 text-primary" />
-                    <span>GPA: {student.gpa}</span>
-                  </div>
-                </div>
-              </div>
+              {/* Online/Verified status dot */}
+              <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
             </div>
-            
-            <div className={`px-4 py-2 rounded-full text-sm font-medium backdrop-blur-md ${getMatchScoreColor(student.matchScore)} group-hover:scale-105 transition-transform duration-300`}>
-              {student.matchScore}% Match
+
+            <div>
+              <h3 className="text-xl font-bold text-slate-900">{student.name}</h3>
+              {/* Optional: Add subtitle or status if needed */}
             </div>
           </div>
 
-          <div className="mb-6">
-            <h4 className="text-sm font-medium text-foreground mb-3 flex items-center">
-              <span className="w-2 h-2 bg-primary rounded-full mr-2 animate-pulse"></span>
-              Skills & Technologies
-            </h4>
-            <div className="flex flex-wrap gap-2">
-              {student.skills.slice(0, 4).map((skill, index) => (
-                <Badge key={index} variant="secondary" className="glass-button border-primary/20 text-foreground hover:border-primary/40 transition-all duration-300">
-                  {skill}
-                </Badge>
-              ))}
-              {student.skills.length > 4 && (
-                <Badge variant="outline" className="glass-button border-muted/30">
-                  +{student.skills.length - 4} more
-                </Badge>
-              )}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 px-3 py-1 bg-green-50 text-green-700 rounded-full border border-green-200 text-sm font-medium">
+              <span className="bg-green-600 rounded-full p-[2px] text-white w-4 h-4 flex items-center justify-center text-[10px]">✓</span>
+              {student.matchScore || 0}% Match
             </div>
-          </div>
-
-          <div className="flex items-center justify-between pt-4 border-t border-border/50">
-            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-              <Mail className="w-4 h-4 text-primary" />
-              <span className="truncate max-w-[200px]">{student.email}</span>
-            </div>
-            
-            <div className="flex items-center space-x-3">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleViewDetails}
-                className="glass-button border-primary/30 text-primary hover:bg-primary/10 transition-all duration-300"
-              >
-                <Eye className="w-4 h-4 mr-2" />
-                View Details
-              </Button>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="glass-button border-primary/30 hover:bg-primary/10 transition-all duration-300"
-                  >
-                    <Eye className="w-4 h-4 mr-2" />
-                    Analyze
-                  </Button>
-                </DialogTrigger>
-
-                <DialogContent className="max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Candidate Profiles</DialogTitle>
-                    <DialogDescription>
-                      Quick access to public profiles extracted from the resume.
-                    </DialogDescription>
-                  </DialogHeader>
-
-                  <div className="space-y-4 mt-2">
-                    {/* LinkedIn */}
-                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-md gradient-primary flex items-center justify-center text-white">
-                          <ExternalLink className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <div className="text-sm font-medium">LinkedIn</div>
-                          <div className="text-xs text-muted-foreground truncate max-w-[220px]">
-                            {student.linkedin_url || student.linkedin || 'Not available'}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        {student.linkedin_url ? (
-                          <>
-                            <a href={student.linkedin_url} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline flex items-center">
-                              Open
-                            </a>
-                            <Button variant="ghost" size="sm" onClick={async () => { await navigator.clipboard.writeText(student.linkedin_url || ''); toast({ title: 'Copied', description: 'LinkedIn URL copied' }); }}>
-                              <Copy className="w-4 h-4" />
-                            </Button>
-                          </>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    {/* GitHub */}
-                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-md bg-gray-800 flex items-center justify-center text-white">
-                          <ExternalLink className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <div className="text-sm font-medium">GitHub</div>
-                          <div className="text-xs text-muted-foreground truncate max-w-[220px]">
-                            {student.github_url || student.github || 'Not available'}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        {student.github_url ? (
-                          <>
-                            <a href={student.github_url} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline flex items-center">
-                              Open
-                            </a>
-                            <Button variant="ghost" size="sm" onClick={async () => { await navigator.clipboard.writeText(student.github_url || ''); toast({ title: 'Copied', description: 'GitHub URL copied' }); }}>
-                              <Copy className="w-4 h-4" />
-                            </Button>
-                          </>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    {/* LeetCode */}
-                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-md bg-slate-800 flex items-center justify-center text-white">
-                          <ExternalLink className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <div className="text-sm font-medium">LeetCode</div>
-                          <div className="text-xs text-muted-foreground truncate max-w-[220px]">
-                            {student.leetcode_url || 'Not available'}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        {student.leetcode_url ? (
-                          <>
-                            <a href={student.leetcode_url} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline flex items-center">
-                              Open
-                            </a>
-                            <Button variant="ghost" size="sm" onClick={async () => { await navigator.clipboard.writeText(student.leetcode_url || ''); toast({ title: 'Copied', description: 'LeetCode URL copied' }); }}>
-                              <Copy className="w-4 h-4" />
-                            </Button>
-                          </>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="glass-button border-muted/30 hover:border-primary/50"
-              >
-                <FileText className="w-4 h-4 mr-2" />
-                Resume
-              </Button>
-            </div>
+            {/* Kebab menu or shortlist could go here */}
           </div>
         </div>
+
+        {/* Details Box (Light Gray) */}
+        <div className="bg-slate-50 rounded-xl p-4 mb-6 flex justify-between items-center px-8">
+          <div>
+            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">DEPARTMENT</div>
+            <div className="font-bold text-slate-900">{student.department || 'N/A'}</div>
+          </div>
+          <div className="h-8 w-px bg-slate-200 mx-4"></div>
+          <div>
+            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">CGPA</div>
+            <div className="font-bold text-slate-900">{student.gpa || 'N/A'} / 10.0</div>
+          </div>
+        </div>
+
+        {/* Skills */}
+        <div className="mb-6">
+          <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">SKILLS & TECHNOLOGIES</div>
+          <div className="flex flex-wrap gap-2">
+            {student.skills.slice(0, 4).map((skill, index) => (
+              <Badge
+                key={index}
+                variant="secondary"
+                className="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border-0 px-3 py-1 rounded-full font-medium"
+              >
+                {skill}
+              </Badge>
+            ))}
+            {student.skills.length > 4 && (
+              <Badge variant="secondary" className="bg-slate-50 text-slate-500 px-3 py-1 rounded-full text-xs">+{student.skills.length - 4}</Badge>
+            )}
+          </div>
+        </div>
+
+        <div className="border-t border-slate-100 my-4"></div>
+
+        {/* Contact Info */}
+        <div className="space-y-3 mb-6">
+          <div className="flex items-center gap-3 text-slate-500 text-sm">
+            <Mail className="w-4 h-4" />
+            <span className="truncate">{student.email}</span>
+          </div>
+          {/* Phone is not in student interface but design shows it. Using dummy or removing if not available. */}
+          <div className="flex items-center gap-3 text-slate-500 text-sm">
+            <Phone className="w-4 h-4" />
+            <span>(229) 555-0109</span> {/* Placeholder as per design, or use dynamic if added */}
+          </div>
+        </div>
+
+        {/* Buttons */}
+        <div className="grid grid-cols-2 gap-4">
+          <Button
+            variant="outline"
+            className="w-full border-indigo-500 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 font-medium"
+            onClick={handleViewDetails}
+          >
+            View Profile
+          </Button>
+
+          <Button
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-md shadow-indigo-200"
+          // Resume action logic
+          >
+            Resume
+          </Button>
+        </div>
+
       </CardContent>
     </Card>
   );

@@ -69,7 +69,7 @@ const AdminDashboard = () => {
         studentId,
         matchScore: 75 // Default match score, can be calculated later
       });
-      
+
       toast({
         title: "Candidate Added Successfully",
         description: "The student has been added to the hiring session."
@@ -91,10 +91,10 @@ const AdminDashboard = () => {
       {/* Animated Background Elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-1/4 left-1/4 w-64 h-64 gradient-primary opacity-10 rounded-full blur-3xl float-animation"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-48 h-48 gradient-accent opacity-10 rounded-full blur-3xl float-animation" style={{animationDelay: '2s'}}></div>
-        <div className="absolute top-1/2 left-1/2 w-32 h-32 gradient-glass opacity-20 rounded-full blur-2xl float-animation" style={{animationDelay: '4s'}}></div>
+        <div className="absolute bottom-1/4 right-1/4 w-48 h-48 gradient-accent opacity-10 rounded-full blur-3xl float-animation" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute top-1/2 left-1/2 w-32 h-32 gradient-glass opacity-20 rounded-full blur-2xl float-animation" style={{ animationDelay: '4s' }}></div>
       </div>
-      
+
       {/* Modern Header */}
       <header className="glass-panel backdrop-blur-xl border-b border-white/15 sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
@@ -113,7 +113,7 @@ const AdminDashboard = () => {
                 <div className="text-xs text-muted-foreground">Recruiter Portal</div>
               </div>
             </Link>
-            
+
             <div className="flex items-center space-x-4">
               <ThemeToggle />
               <div className="hidden md:flex items-center space-x-3 px-4 py-2 bg-muted/50 rounded-lg">
@@ -137,64 +137,64 @@ const AdminDashboard = () => {
       <div className="container mx-auto px-6 py-8 relative z-10">
         <div className="max-w-7xl mx-auto">
           {/* Hero Section */}
-          <div className="mb-12 relative overflow-hidden fade-in-up">
-            <div className="glass-panel p-10 text-center relative overflow-hidden">
-              <div className="absolute inset-0 gradient-glass opacity-50"></div>
-              <div className="relative z-10">
-                <div className="flex flex-col md:flex-row items-start md:items-center justify-between">
-                  <div className="flex-1 mb-6 md:mb-0">
-                    <div className="flex items-center justify-center space-x-3 mb-4">
-                      <Sparkles className="h-8 w-8 text-primary animate-pulse" />
-                      <h1 className="text-5xl md:text-6xl font-bold gradient-primary bg-clip-text text-transparent tracking-tight">
-                        Welcome back, {fullName?.split(' ')[0] || 'Recruiter'}!
-                      </h1>
-                    </div>
-                    <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-                      Streamline your hiring process with AI-powered candidate matching and intelligent analytics. Discover exceptional talent and build your dream team.
-                    </p>
-                  
-                    <div className="flex items-center justify-center space-x-8 mt-8">
-                      <div className="flex items-center space-x-3 glass-button px-4 py-2 rounded-lg">
-                        <div className="w-4 h-4 bg-accent rounded-full animate-pulse shadow-glow" />
-                        <span className="text-sm font-medium text-foreground">
-                          {activeSessions.length} active sessions
-                        </span>
-                      </div>
-                      <div className="flex items-center space-x-3 glass-button px-4 py-2 rounded-lg">
-                        <Calendar className="h-4 w-4 text-primary" />
-                        <span className="text-sm font-medium text-foreground">
-                          {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                        </span>
-                      </div>
-                    </div>
+          <div className="mb-12 relative overflow-hidden fade-in-up py-10">
+            <div className="relative z-10 text-center max-w-4xl mx-auto space-y-8">
+
+              {/* Title & Subtitle */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-center space-x-3">
+                  <Sparkles className="h-8 w-8 text-blue-500 animate-pulse" />
+                  <h1 className="text-5xl font-bold text-blue-600 dark:text-blue-400 tracking-tight">
+                    Welcome back, {fullName?.split(' ')[0] || 'Recruiter'}!
+                  </h1>
                 </div>
-                
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
-                    <Button 
-                      onClick={() => navigate('/create-session')} 
-                      className="gradient-primary text-white border-0 shadow-glow hover:scale-105 transition-all duration-300 px-5 py-4 text-lg font-semibold"
-                      size="lg"
-                    >
-                      <Plus className="w-6 h-6 mr-3" />
-                      Create New Session
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setSelectedTab('search')}
-                      className="glass-button border-primary/30 text-primary hover:scale-105 transition-all duration-300 px-5 py-4 text-lg font-semibold"
-                      size="lg"
-                    >
-                      <Search className="w-6 h-6 mr-3" />
-                      Search Candidates
-                    </Button>
-                  </div>
+                <p className="text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed">
+                  Streamline your hiring process with AI-powered candidate matching and intelligent analytics. Discover exceptional talent and build your dream team.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                <Button
+                  onClick={() => navigate('/create-session')}
+                  className="bg-blue-500 hover:bg-blue-600 text-white shadow-lg shadow-blue-200 dark:shadow-none transition-all duration-300 px-8 py-6 text-lg font-semibold rounded-xl min-w-[240px]"
+                >
+                  <Plus className="w-5 h-5 mr-2" />
+                  Create New Session
+                </Button>
+
+                <Button
+                  variant="outline"
+                  onClick={() => setSelectedTab('search')}
+                  className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 px-8 py-6 text-lg font-semibold rounded-xl min-w-[240px] shadow-sm"
+                >
+                  <Search className="w-5 h-5 mr-2 text-blue-500" />
+                  Search Candidates
+                </Button>
+              </div>
+
+              {/* Status Badges */}
+              <div className="flex flex-wrap justify-center gap-4">
+                <div className="flex items-center space-x-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-full border border-blue-100 dark:border-blue-800/50">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                  <span className="text-sm font-medium">
+                    {activeSessions.length} active sessions
+                  </span>
+                </div>
+
+                <div className="flex items-center space-x-2 px-4 py-2 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-full border border-slate-200 dark:border-slate-700">
+                  <Calendar className="h-4 w-4 text-slate-400" />
+                  <span className="text-sm font-medium">
+                    {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                  </span>
                 </div>
               </div>
+
             </div>
           </div>
 
           {/* Dashboard Stats */}
-          <div className="mb-12 slide-in-left" style={{animationDelay: '0.2s'}}>
+          <div className="mb-12 slide-in-left" style={{ animationDelay: '0.2s' }}>
             <DashboardStats sessions={sessions} />
           </div>
 
@@ -215,8 +215,8 @@ const AdminDashboard = () => {
               {selectedTab === 'search' && activeSessions.length > 0 && (
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-muted-foreground">Add candidates to:</span>
-                  <Select 
-                    value={selectedSessionForCandidates || ''} 
+                  <Select
+                    value={selectedSessionForCandidates || ''}
                     onValueChange={setSelectedSessionForCandidates}
                   >
                     <SelectTrigger className="w-64">
@@ -284,38 +284,12 @@ const AdminDashboard = () => {
 
             <TabsContent value="search" className="space-y-6">
               <Card className="glass-card border-0 shadow-card">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-xl font-semibold">Search Candidates</CardTitle>
-                      <CardDescription>Find students by skills, name, or eligibility and add them to sessions</CardDescription>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {activeSessions.length > 0 && (
-                        <Select 
-                          value={selectedSessionForCandidates || ''} 
-                          onValueChange={setSelectedSessionForCandidates}
-                        >
-                          <SelectTrigger className="w-56">
-                            <SelectValue placeholder="Add to session (optional)" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {activeSessions.map((session) => (
-                              <SelectItem key={session.id} value={session.id}>
-                                {session.title} - {session.role}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                      <Button variant="outline" onClick={() => setSelectedSessionForCandidates(null)}>Clear</Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
+                <CardContent className="pt-6">
                   <StudentSearch
                     onAddToSession={selectedSessionForCandidates ? handleAddToSession : undefined}
                     selectedSessionId={selectedSessionForCandidates || undefined}
+                    activeSessions={activeSessions}
+                    onSessionSelect={setSelectedSessionForCandidates}
                   />
                 </CardContent>
               </Card>
@@ -323,7 +297,7 @@ const AdminDashboard = () => {
           </Tabs>
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 

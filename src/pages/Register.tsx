@@ -25,7 +25,7 @@ const Register = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.email || !formData.password || !formData.confirmPassword || !formData.fullName) {
       toast({
         title: "Error",
@@ -67,7 +67,7 @@ const Register = () => {
         });
 
         // Redirect based on role
-        navigate(role === 'admin' ? '/admin-dashboard' : '/student-dashboard');
+        navigate(role === 'admin' ? '/admin-dashboard' : '/student-details');
       }
     } catch (error: any) {
       console.error('Registration error:', error);
@@ -108,7 +108,7 @@ const Register = () => {
               Join TalentMap as a {role === 'admin' ? 'Recruiter' : 'Student'}
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
@@ -155,8 +155,8 @@ const Register = () => {
                 />
               </div>
 
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full bg-black hover:bg-gray-800"
                 disabled={isLoading}
               >

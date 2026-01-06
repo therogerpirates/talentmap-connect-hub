@@ -51,7 +51,7 @@ const ProfilePage = () => {
         title: "Profile Updated!",
         description: "Your profile information has been saved successfully."
       });
-      navigate('/student-dashboard'); // Navigate back to student dashboard after saving
+      navigate('/student-details'); // Navigate back to student details after saving
     } catch (error: any) {
       console.error('Update error:', error);
       toast({
@@ -81,7 +81,7 @@ const ProfilePage = () => {
       <div className="absolute top-4 right-4 z-50">
         <ThemeToggle />
       </div>
-      
+
       <Card className="w-full max-w-md bg-white dark:bg-gray-800 transition-colors duration-300">
         <CardHeader>
           <CardTitle>Edit Profile Information</CardTitle>

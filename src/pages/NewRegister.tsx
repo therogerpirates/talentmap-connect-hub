@@ -27,7 +27,7 @@ const NewRegister = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!selectedRole) {
       toast({
         title: "Error",
@@ -80,7 +80,7 @@ const NewRegister = () => {
         });
 
         // Redirect based on role
-        navigate(selectedRole === 'admin' ? '/admin-dashboard' : '/student-dashboard');
+        navigate(selectedRole === 'admin' ? '/admin-dashboard' : '/student-details');
       }
     } catch (error: any) {
       console.error('Registration error:', error);
@@ -107,7 +107,7 @@ const NewRegister = () => {
       <div className="absolute top-4 right-4 z-50">
         <ThemeToggle />
       </div>
-      
+
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -126,7 +126,7 @@ const NewRegister = () => {
               Join TalentMap
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent>
             {!selectedRole ? (
               <div className="space-y-4">
@@ -227,7 +227,7 @@ const NewRegister = () => {
                 </div>
 
                 <div className="flex space-x-4">
-                  <Button 
+                  <Button
                     type="button"
                     variant="outline"
                     className="flex-1"
@@ -235,8 +235,8 @@ const NewRegister = () => {
                   >
                     Back
                   </Button>
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     className="flex-1 bg-black hover:bg-gray-800"
                     disabled={isLoading}
                   >
