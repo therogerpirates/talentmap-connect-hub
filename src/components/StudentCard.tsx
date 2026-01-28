@@ -19,6 +19,7 @@ interface Student {
   linkedin_url?: string | null;
   github_url?: string | null;
   leetcode_url?: string | null;
+  phone?: string | null;
 }
 
 interface StudentCardProps {
@@ -61,10 +62,10 @@ const StudentCard = ({ student, isShortlisted, onShortlistToggle }: StudentCardP
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 px-3 py-1 bg-green-50 text-green-700 rounded-full border border-green-200 text-sm font-medium">
+            {/* <div className="flex items-center gap-1 px-3 py-1 bg-green-50 text-green-700 rounded-full border border-green-200 text-sm font-medium">
               <span className="bg-green-600 rounded-full p-[2px] text-white w-4 h-4 flex items-center justify-center text-[10px]">✓</span>
               {student.matchScore || 0}% Match
-            </div>
+            </div> */}
             {/* Kebab menu or shortlist could go here */}
           </div>
         </div>
@@ -109,11 +110,12 @@ const StudentCard = ({ student, isShortlisted, onShortlistToggle }: StudentCardP
             <Mail className="w-4 h-4" />
             <span className="truncate">{student.email}</span>
           </div>
-          {/* Phone is not in student interface but design shows it. Using dummy or removing if not available. */}
-          <div className="flex items-center gap-3 text-slate-500 text-sm">
-            <Phone className="w-4 h-4" />
-            <span>(229) 555-0109</span> {/* Placeholder as per design, or use dynamic if added */}
-          </div>
+          {student.phone ? (
+            <div className="flex items-center gap-3 text-slate-500 text-sm">
+              <Phone className="w-4 h-4" />
+              <span>{student.phone}</span>
+            </div>
+          ) : null}
         </div>
 
         {/* Buttons */}
@@ -126,12 +128,50 @@ const StudentCard = ({ student, isShortlisted, onShortlistToggle }: StudentCardP
             View Profile
           </Button>
 
-          <Button
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-md shadow-indigo-200"
-          // Resume action logic
-          >
-            Resume
-          </Button>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-md shadow-indigo-200"
+              >
+                Resume
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl h-[85vh] flex flex-col">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-indigo-600" />
+                  {student.name}'s Resume
+                </DialogTitle>
+                <DialogDescription>
+                  View the candidate's uploaded resume.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex-1 w-full bg-slate-50 rounded-md border border-slate-200 overflow-hidden mt-4">
+                {student.resumeUrl ? (
+                  <iframe
+                    src={student.resumeUrl}
+                    className="w-full h-full"
+                    title={`${student.name}'s resume`}
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
+                    <FileText className="w-12 h-12 opacity-20" />
+                    <p>No resume available for this candidate</p>
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end gap-2 mt-4">
+                {student.resumeUrl && (
+                  <Button variant="outline" asChild>
+                    <a href={student.resumeUrl} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      Open in New Tab
+                    </a>
+                  </Button>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
       </CardContent>

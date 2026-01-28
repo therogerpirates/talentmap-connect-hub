@@ -60,16 +60,43 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchProfile = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      // 1. Try fetching from profiles (Admins/Recruiters)
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, email, full_name, role')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
-      setProfile(data);
+      if (profileData) {
+        setProfile(profileData);
+        return;
+      }
+
+      // 2. If no profile found, try fetching from students
+      const { data: studentData, error: studentError } = await supabase
+        .from('students')
+        .select('id, email, full_name')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (studentData) {
+        // Normalize student data to Profile interface
+        setProfile({
+          id: studentData.id,
+          email: studentData.email || '',
+          full_name: studentData.full_name || '',
+          role: 'student'
+        });
+        return;
+      }
+
+      // If neither found (rare race condition or error), log it but don't crash
+      console.warn("User logged in but no profile found in profiles or students table.");
+      setProfile(null);
+
     } catch (error) {
       console.error('Error fetching profile:', error);
+      setProfile(null);
     } finally {
       setLoading(false);
     }

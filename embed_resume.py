@@ -43,9 +43,8 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY") # It's safer to use environment va
 # Initialize Groq client with error handling
 try:
     if GROQ_API_KEY:
-        # Temporarily disable Groq to avoid proxies error
-        groq_client = None
-        print("Groq client temporarily disabled due to proxies error")
+        groq_client = Groq(api_key=GROQ_API_KEY)
+        print("Groq client initialized successfully")
     else:
         groq_client = None
         print("GROQ_API_KEY not found, Groq client not initialized")
@@ -64,6 +63,138 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
         print("PDF extraction error:", e)
         traceback.print_exc()
         raise
+
+async def extract_resume_data_with_llm(text: str) -> dict:
+    """
+    Extracts structured resume data using Groq LLM.
+    Returns a dict with keys: personal, education, skills, experience, projects, certifications, summary.
+    """
+    if not GROQ_API_KEY or groq_client is None:
+        return None
+
+    prompt = f"""
+    You are an expert resume parser. Extract the following information from the resume text below and return it as a valid JSON object.
+    
+    JSON Structure:
+    {{
+        "personal": {{
+            "name": "",
+            "email": "",
+            "phone": "",
+            "linkedin": "",
+            "github": "",
+            "leetcode": "",
+            "address": ""
+        }},
+        "education": [
+            {{
+                "degree": "", 
+                "institution": "", 
+                "department": "", 
+                "year": "(e.g., 2020-2024)", 
+                "cgpa": ""
+            }}
+        ],
+        "skillSections": [
+            {{
+                "heading": "Technical Skills",
+                "items": ["Python", "JavaScript", "React"]
+            }},
+            {{
+                "heading": "Languages",
+                "items": ["English", "Spanish"]
+            }},
+            {{
+                "heading": "Tools & Frameworks",
+                "items": ["Git", "Docker", "AWS"]
+            }}
+        ],
+        "experience": [
+            {{
+                "jobTitle": "",
+                "company": "",
+                "duration": "",
+                "description": ""
+            }}
+        ],
+        "projects": [
+            {{
+                "title": "",
+                "description": "",
+                "technologies": "",
+                "link": ""
+            }}
+        ],
+        "certifications": [
+            {{
+                "title": "",
+                "date": "",
+                "description": ""
+            }}
+        ],
+        "summary": "Extracted professional summary from the resume text (not generated)",
+        "suggestions": [
+            "Suggestion 1",
+            "Suggestion 2",
+            "Suggestion 3"
+        ]
+    }}
+
+    Rules:
+    - Extract ALL relevant items.
+    - For Personal Info: infer name if not labeled. Convert all links to full URLs.
+    - For Education: Extract degree, major/department, college name.
+    - For skillSections: IMPORTANT - Categorize skills into appropriate sections. Common categories include:
+      * "Technical Skills" or "Programming Languages" - for coding languages like Python, Java, JavaScript
+      * "Frameworks & Libraries" - for frameworks like React, Django, TensorFlow
+      * "Tools & Technologies" - for tools like Git, Docker, AWS, Kubernetes
+      * "Databases" - for MySQL, MongoDB, PostgreSQL
+      * "Soft Skills" - for leadership, communication, teamwork
+      * "Languages" - for spoken languages like English, Hindi, Spanish
+      * Use the exact headings found in the resume if they exist, otherwise infer appropriate categories.
+      * Each section should have a "heading" (string) and "items" (array of skills).
+      * Create at least 2-3 sections if multiple skill types are present.
+    - For Experience: Extract job title, company, dates.
+    - For Projects: Extract title, technologies used (as comma separated string), and a short description.
+    - For Certifications: Extract title and date (if available). 
+      * Do NOT split a single certification title into multiple entries. 
+      * Extract the full official name of the certification. 
+      * Ignore labels like "Date:", "Issued by:", "Credential ID:".
+    - For Academic Info: Extract 10th/12th percentages and CGPA as numbers if found.
+    - For Summary: Extract the "Summary", "Profile", or "About Me" section verbatim. If not found, return an empty string.
+    - For Suggestions: Analyze the resume content critically. Provide 3-5 specific, actionable improvements to enhance the resume's impact, ATS compatibility, and professional appeal. Focus on missing metrics, weak action verbs, formatting issues, or missing sections.
+    - Return ONLY valid JSON. No markdown formatting.
+
+    Resume Text:
+    {text[:20000]}
+    """
+
+    try:
+        chat_completion = groq_client.chat.completions.create(
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a precise resume parser that outputs only JSON.",
+                },
+                {
+                    "role": "user",
+                    "content": prompt,
+                },
+            ],
+            model="llama-3.3-70b-versatile", 
+            temperature=0.1,
+            max_tokens=4000,
+            response_format={"type": "json_object"}
+        )
+        
+        response_content = chat_completion.choices[0].message.content
+        data = json.loads(response_content)
+        return data
+        
+    except Exception as e:
+        print(f"LLM Extraction failed: {e}")
+        traceback.print_exc()
+        return None
 
 # Improved function for skill extraction
 def extract_skills_from_text(text: str) -> list[str]:
@@ -209,57 +340,17 @@ def extract_projects_from_text(text: str) -> list[str]:
         r'academic\s*projects?[:\s]*\n(.*?)(?=\n\s*[A-Z][^:\n]*:|$)'
     ]
     
-    project_block = ""
     for pattern in project_section_patterns:
-        match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
-        if match:
-            project_block = match.group(1).strip()
-            break
-            
-    if project_block:
-        lines = project_block.split('\n')
-        current_project = []
-        
-        # bullet_pattern = r'^[\s]*[•\-\*–]' # Regex for checking if line is a bullet
-        
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
-                
-            is_bullet = line.startswith(('•', '-', '*', '–')) or re.match(r'^[\s]*[•\-\*–]', line)
-            
-            if is_bullet:
-                # Append to current project
-                current_project.append(line)
-            else:
-                # Not a bullet. 
-                # If we have a current project and the LAST line we added was a bullet,
-                # then this new non-bullet line is likely a NEW project name.
-                # If the last line was NOT a bullet (i.e., it was a title/text), then this might be a 
-                # multi-line title or continuation of description text.
-                
-                # Check if we should start a new project
-                should_start_new = False
-                if current_project:
-                    last_line = current_project[-1]
-                    last_was_bullet = last_line.startswith(('•', '-', '*', '–')) or re.match(r'^[\s]*[•\-\*–]', last_line)
-                    if last_was_bullet:
-                        should_start_new = True
-                
-                if should_start_new:
-                    # Save current project
-                    projects.append("\n".join(current_project))
-                    current_project = [line]
-                else:
-                    # Continue current project (or start first one)
-                    current_project.append(line)
-                    
-        # Append the last project
-        if current_project:
-            projects.append("\n".join(current_project))
-
-    # If parsing failed or returned nothing, fall back to simple keyword search
+        matches = re.findall(pattern, text, re.IGNORECASE | re.DOTALL)
+        for match in matches:
+            # Split by bullet points or line breaks
+            project_lines = re.split(r'[•\-\*]\s*|(?:\n\s*)+', match.strip())
+            for line in project_lines:
+                line = line.strip()
+                if len(line) > 20:  # Filter out short lines
+                    projects.append(line)
+    
+    # If no structured project section found, look for project-like descriptions
     if not projects:
         # Look for lines that might be project descriptions
         project_keywords = ['built', 'developed', 'created', 'designed', 'implemented', 'application', 'system', 'platform', 'website', 'app']
@@ -760,7 +851,7 @@ async def session_llm_suggestions(request: Request):
                     {"role": "system", "content": system_msg},
                     {"role": "user", "content": user_msg},
                 ],
-                model="llama3-8b-8192",
+                model="llama-3.1-8b-instant",
                 temperature=0.0,
                 max_tokens=200,
             )
@@ -844,90 +935,169 @@ async def extract_resume_for_builder(
             }, status_code=400)
         
         print(f"Extracted text: {len(text)} characters")
+
+        # Use LLM for extraction
+        llm_data = await extract_resume_data_with_llm(text)
         
-        # 2. Extract all information
-        skills = extract_skills_from_text(text)
-        projects_raw = extract_projects_from_text(text)
-        experience_raw = extract_experience_from_text(text)
-        academic_info = extract_academic_info(text)
-        
-        # 3. Extract personal information using regex patterns
-        personal_info = extract_personal_info_from_text(text)
-        
-        # 4. Extract education details
-        education_details = extract_education_details(text)
-        
-        # 5. Format projects for resume builder
-        projects = []
-        for proj_text in projects_raw[:5]:  # Top 5 projects
-            project_data = parse_project_text(proj_text)
-            projects.append(project_data)
-        
-        # 6. Format experience for resume builder
-        experiences = []
-        for exp_text in experience_raw[:5]:  # Top 5 experiences
-            exp_data = parse_experience_text(exp_text)
-            experiences.append(exp_data)
-        
-        # 7. Extract certifications/achievements
-        certifications = extract_certifications_from_text(text)
-        
-        # 8. Extract summary
-        summary = extract_summary_from_text(text)
-        
-        # 9. Structure the data for Resume Builder
-        resume_builder_data = {
-            "personal": {
-                "fullName": personal_info.get("name", ""),
-                "email": personal_info.get("email", ""),
-                "phone": personal_info.get("phone", ""),
-                "address": personal_info.get("address", ""),
-                "linkedin": personal_info.get("linkedin", ""),
-                "github": personal_info.get("github", ""),
-                "leetcode": personal_info.get("leetcode", "")
-            },
-            "education": education_details if education_details else [{
-                "degree": "",
-                "institution": "",
-                "department": "",
-                "year": "",
-                "cgpa": str(academic_info.get("cgpa", "")) if academic_info.get("cgpa") else ""
-            }],
-            "skills": skills if skills else [""],
-            "experience": experiences if experiences else [{
-                "jobTitle": "",
-                "company": "",
-                "duration": "",
-                "description": ""
-            }],
-            "projects": projects if projects else [{
-                "title": "",
-                "description": "",
-                "technologies": "",
-                "link": ""
-            }],
-            "achievements": certifications if certifications else [{
-                "title": "",
-                "description": "",
-                "date": ""
-            }],
-            "extracurricular": [{
-                "role": "",
-                "organization": "",
-                "duration": "",
-                "description": ""
-            }],  # Default empty structure matching Resume Builder format
-            "summary": summary
-        }
+        if llm_data:
+            print("✅ Using LLM extracted data for builder")
+            personal_info = llm_data.get("personal", {})
+            
+            # Map LLM keys to Resume Builder structure
+            resume_builder_data = {
+                "personal": {
+                    "fullName": personal_info.get("name", ""),
+                    "email": personal_info.get("email", ""),
+                    "phone": personal_info.get("phone", ""),
+                    "address": personal_info.get("address", ""),
+                    "linkedin": personal_info.get("linkedin", ""),
+                    "github": personal_info.get("github", ""),
+                    "leetcode": personal_info.get("leetcode", "")
+                },
+                "education": llm_data.get("education", []) or [{
+                    "degree": "", "institution": "", "department": "", "year": "", "cgpa": ""
+                }],
+                # Use skillSections from LLM, with fallback
+                "skillSections": llm_data.get("skillSections", []) or [{"heading": "Skills", "items": [""]}],
+                "experience": llm_data.get("experience", []) or [{
+                    "jobTitle": "", "company": "", "duration": "", "description": ""
+                }],
+                "projects": llm_data.get("projects", []) or [{
+                    "title": "", "description": "", "technologies": "", "link": ""
+                }],
+                "achievements": llm_data.get("certifications", []) or [{
+                    "title": "", "description": "", "date": ""
+                }],
+                "extracurricular": [{
+                    "role": "", "organization": "", "duration": "", "description": ""
+                }], 
+                "summary": llm_data.get("summary", "")
+            }
+            
+            # Flatten skillSections to a flat skills array for database storage
+            skill_sections = resume_builder_data.get("skillSections", [])
+            skills = []
+            for section in skill_sections:
+                if isinstance(section, dict):
+                    items = section.get("items", [])
+                    skills.extend([item for item in items if item])
+            if not skills:
+                skills = [""]
+            
+            projects_list_for_db = []
+            for p in resume_builder_data["projects"]:
+                if isinstance(p, dict): projects_list_for_db.append(p.get("title", ""))
+                elif isinstance(p, str): projects_list_for_db.append(p)
+            
+            experience_list_for_db = []
+            for e in resume_builder_data["experience"]:
+                if isinstance(e, dict): experience_list_for_db.append(e.get("jobTitle", ""))
+                elif isinstance(e, str): experience_list_for_db.append(e)
+
+            summary = resume_builder_data["summary"]
+            
+            academic_info = llm_data.get("academic_info", {"cgpa": None, "tenth_percentage": None, "twelfth_percentage": None})
+            certifications = resume_builder_data["achievements"]
+            
+            # Reconstruct 'projects' and 'experiences' lists as dicts (already are) to match stats/db logic expectation
+            # The 'projects' and 'experiences' variables below are used for DB and Stats
+            projects = resume_builder_data["projects"] 
+            experiences = resume_builder_data["experience"]
+
+        else:
+            print("⚠️ LLM extraction failed. Falling back to Regex for builder.")
+            # 2. Extract all information (Regex Fallback)
+            skills = extract_skills_from_text(text)
+            projects_raw = extract_projects_from_text(text)
+            experience_raw = extract_experience_from_text(text)
+            academic_info = extract_academic_info(text)
+            
+            # 3. Extract personal information using regex patterns
+            personal_info = extract_personal_info_from_text(text)
+            
+            # 4. Extract education details
+            education_details = extract_education_details(text)
+            
+            # 5. Format projects for resume builder
+            projects = []
+            for proj_text in projects_raw[:5]:  # Top 5 projects
+                project_data = parse_project_text(proj_text)
+                projects.append(project_data)
+            
+            # 6. Format experience for resume builder
+            experiences = []
+            for exp_text in experience_raw[:5]:  # Top 5 experiences
+                exp_data = parse_experience_text(exp_text)
+                experiences.append(exp_data)
+            
+            # 7. Extract certifications/achievements
+            certifications = extract_certifications_from_text(text)
+            
+            # 8. Extract summary
+            summary = extract_summary_from_text(text)
+            
+            # 9. Structure the data for Resume Builder
+            resume_builder_data = {
+                "personal": {
+                    "fullName": personal_info.get("name", ""),
+                    "email": personal_info.get("email", ""),
+                    "phone": personal_info.get("phone", ""),
+                    "address": personal_info.get("address", ""),
+                    "linkedin": personal_info.get("linkedin", ""),
+                    "github": personal_info.get("github", ""),
+                    "leetcode": personal_info.get("leetcode", "")
+                },
+                "education": education_details if education_details else [{
+                    "degree": "",
+                    "institution": "",
+                    "department": "",
+                    "year": "",
+                    "cgpa": str(academic_info.get("cgpa", "")) if academic_info.get("cgpa") else ""
+                }],
+                # Wrap flat skills in a single section for consistency with LLM output
+                "skillSections": [{"heading": "Skills", "items": skills}] if skills else [{"heading": "Skills", "items": [""]}],
+                "experience": experiences if experiences else [{
+                    "jobTitle": "",
+                    "company": "",
+                    "duration": "",
+                    "description": ""
+                }],
+                "projects": projects if projects else [{
+                    "title": "",
+                    "description": "",
+                    "technologies": "",
+                    "link": ""
+                }],
+                "achievements": certifications if certifications else [{
+                    "title": "",
+                    "description": "",
+                    "date": ""
+                }],
+                "extracurricular": [{
+                    "role": "",
+                    "organization": "",
+                    "duration": "",
+                    "description": ""
+                }],
+                "summary": summary
+            }
         
         # 10. Store in Supabase for persistence
         try:
             # Store the structured resume data
             update_data = {
-                "resume_form_data": resume_builder_data,  # Changed from resume_builder_data to resume_form_data
+                "resume_form_data": resume_builder_data,
                 "skills": skills,
-                "projects": [p["title"] for p in projects if p.get("title")],
-                "experience": [e["jobTitle"] for e in experiences if e.get("jobTitle")],
+                "projects": [
+                    p.get("title") if isinstance(p, dict) else str(p) 
+                    for p in projects 
+                    if (isinstance(p, dict) and p.get("title")) or (isinstance(p, str) and p)
+                ],
+                "experience": [
+                    e.get("jobTitle") if isinstance(e, dict) else str(e)
+                    for e in experiences 
+                    if (isinstance(e, dict) and e.get("jobTitle")) or (isinstance(e, str) and e)
+                ],
                 "summary": summary
             }
             
@@ -1190,8 +1360,12 @@ def extract_certifications_from_text(text: str) -> list:
     for pattern in cert_patterns:
         matches = re.findall(pattern, text, re.DOTALL)
         for match in matches:
-            # Split by bullets or newlines
-            cert_lines = re.split(r'[•\-\*]\s*|(?:\n\s*)+', match.strip())
+            # Split by bullets or double newlines (paragraphs), avoiding single newlines which might be text wrapping
+            # Splits on: 
+            # 1. Bullets (•, -, *)
+            # 2. Double newlines (\n\n)
+            # 3. Newline followed by a bullet
+            cert_lines = re.split(r'(?:\r?\n\s*[•\-\*]+\s*)|(?:\r?\n\r?\n)|(?:^[•\-\*]+\s*)', match.strip())
             
             for line in cert_lines:
                 line = line.strip()
@@ -1274,43 +1448,111 @@ async def embed_resume(
         embedding = [0.0] * 1024
         # Don't return error, continue processing
 
-    # 3. Generate summary using Groq
+    # 3. Generate summary using Groq (Fallback if LLM extraction fails or has no summary)
+    # The summary will be overwritten below if LLM extraction works and finds a summary
     summary = await generate_summary(text)
 
-    # 4. Extract skills from text
-    try:
-        skills = extract_skills_from_text(text)
-        print(f"Extracted skills: {skills}")
-    except Exception as e:
-        print("Skill extraction failed:", e)
-        skills = []
-
-    # 5. Extract academic information (CGPA, 10th, 12th marks)
-    try:
-        academic_info = extract_academic_info(text)
-        print(f"Extracted academic info: {academic_info}")
-    except Exception as e:
-        print("Academic info extraction failed:", e)
-        academic_info = {"cgpa": None, "tenth_percentage": None, "twelfth_percentage": None}
-
-    # 6. Extract projects
-    try:
-        projects = extract_projects_from_text(text)
-        print(f"Extracted projects: {projects}")
-    except Exception as e:
-        print("Project extraction failed:", e)
+    # 4. Extract data using LLM with regex fallback
+    llm_data = await extract_resume_data_with_llm(text)
+    
+    if llm_data:
+        print("✅ Using LLM extracted data")
+        skills = llm_data.get("skills", [])
+        # Flatten skillSections if skills is empty (new format)
+        if not skills and "skillSections" in llm_data:
+             skill_sections = llm_data.get("skillSections", [])
+             for section in skill_sections:
+                 if isinstance(section, dict):
+                     items = section.get("items", [])
+                     skills.extend([item for item in items if item])
+        if not skills:
+             skills = [""]
+        
+        # Process Academic Info
+        academic_info = llm_data.get("academic_info", {"cgpa": None, "tenth_percentage": None, "twelfth_percentage": None})
+        
+        # Process Projects (convert to strings if needed for this endpoint, or keep structure for others)
+        # embed_resume expects projects to be list of strings primarily for embedding/search?
+        # The update_json uses "projects": projects. If Supabase column is text[], it needs strings.
+        # If it is jsonb, it needs dicts.
+        # Based on previous code: projects = extract_projects_from_text(text) -> List[str]
+        # So we should convert LLM projects to strings here.
+        projects_data = llm_data.get("projects", [])
         projects = []
-
-    # 7. Extract experience data
-    try:
-        experience_data = extract_experience_data(text)
-        has_internship = experience_data.get("has_internship", False)
-        experience_entries = experience_data.get("experience_entries", [])
-        print(f"Extracted experience data: {experience_data}")
-    except Exception as e:
-        print("Experience extraction failed:", e)
-        has_internship = False
+        for p in projects_data:
+            if isinstance(p, dict):
+                p_str = p.get("title", "")
+                if p.get("technologies"):
+                    p_str += f" [{p['technologies']}]"
+                projects.append(p_str)
+            elif isinstance(p, str):
+                projects.append(p)
+                
+        # Process Experience
+        experience_entries_data = llm_data.get("experience", [])
         experience_entries = []
+        has_internship = False
+        for e in experience_entries_data:
+            if isinstance(e, dict):
+                # Format: "Job Title at Company (Duration)"
+                job = e.get("jobTitle", "")
+                comp = e.get("company", "")
+                dur = e.get("duration", "")
+                entry = f"{job} at {comp}"
+                if dur:
+                    entry += f" ({dur})"
+                experience_entries.append(entry)
+                
+                if "intern" in job.lower() or "intern" in comp.lower():
+                    has_internship = True
+            elif isinstance(e, str):
+                experience_entries.append(e)
+                if "intern" in e.lower():
+                    has_internship = True
+                    
+        # Process Certifications
+        certifications_data = llm_data.get("certifications", [])
+        # We need to pass this to update_data
+        
+        # Personal Info overrides
+        personal_info_llm = llm_data.get("personal", {})
+        
+        # Extracted Summary (override generated one if found)
+        extracted_summary = llm_data.get("summary")
+        if extracted_summary and len(extracted_summary.strip()) > 10:
+            print("✅ Using extracted summary instead of generated one")
+            summary = extracted_summary
+        
+    else:
+        print("⚠️ LLM extraction failed or returned empty. Falling back to Regex.")
+        # Fallback to existing regex extraction
+        try:
+            skills = extract_skills_from_text(text)
+        except: skills = []
+
+        try:
+            academic_info = extract_academic_info(text)
+        except: academic_info = {"cgpa": None, "tenth_percentage": None, "twelfth_percentage": None}
+
+        try:
+            projects = extract_projects_from_text(text)
+        except: projects = []
+
+        try:
+            experience_data = extract_experience_data(text)
+            has_internship = experience_data.get("has_internship", False)
+            experience_entries = experience_data.get("experience_entries", [])
+        except: 
+            has_internship = False
+            experience_entries = []
+            
+        certifications_data = [] # Regex doesn't extract this well yet in fallback path unless we added it?
+        # We added extract_certifications_from_text previously!
+        try:
+            certifications_data = extract_certifications_from_text(text)
+        except: certifications_data = []
+            
+        personal_info_llm = {}
 
     # 8. Calculate ATS score
     try:
@@ -1320,14 +1562,29 @@ async def embed_resume(
         print("ATS score calculation failed:", e)
         ats_score = 0
 
-    # Extract personal info (links) so we can persist profile URLs alongside other data
+    # Extract personal info (links) - merge regex and LLM
     try:
-        personal_info = extract_personal_info_from_text(text)
+        personal_info_regex = extract_personal_info_from_text(text)
+        # Merge: LLM takes precedence if available, else Regex
+        personal_info = {**personal_info_regex, **personal_info_llm}
+        # Filter out empty values
+        personal_info = {k: v for k, v in personal_info.items() if v}
     except Exception:
-        personal_info = {}
+        personal_info = personal_info_llm if personal_info_llm else {}
 
     # 9. Store all extracted data in Supabase
     try:
+        # Prepare certifications as strings for DB if needed
+        cert_strings = []
+        for cert in certifications_data:
+            if isinstance(cert, dict):
+                c_str = cert.get("title", "")
+                if cert.get("date"):
+                    c_str += f" ({cert['date']})"
+                cert_strings.append(c_str)
+            elif isinstance(cert, str):
+                cert_strings.append(cert)
+
         update_data = {
             "resume_embeddings": embedding,
             "summary": summary,
@@ -1336,6 +1593,9 @@ async def embed_resume(
             "experience": experience_entries,
             "has_internship": has_internship,
             "ats_score": ats_score,
+            "ats_score": ats_score,
+            "certifications": cert_strings,
+            "resume_form_data": llm_data if llm_data else None  # Save structured data including suggestions
         }
         
         # Add academic information if available
@@ -1344,6 +1604,7 @@ async def embed_resume(
         if academic_info.get("tenth_percentage") is not None:
             update_data["tenth_percentage"] = academic_info["tenth_percentage"]
         if academic_info.get("twelfth_percentage") is not None:
+            update_data["twelfth_percentage"] = academic_info["twelfth_percentage"]
             update_data["twelfth_percentage"] = academic_info["twelfth_percentage"]
         # Persist extracted profile URLs if present
         if personal_info.get("linkedin"):
@@ -1361,6 +1622,45 @@ async def embed_resume(
             if val and not val.startswith("http"):
                 val = f"https://{val}"
             update_data["leetcode_url"] = val
+            
+        # Extract and store certifications
+        try:
+            certifications = extract_certifications_from_text(text)
+            # Store as list of strings for consistency with other array fields if that's what the DB expects
+            # Or as JSONB if the column is JSONB. 
+            # Looking at projects/experience, they seem to be lists of strings in some contexts, but let's check.
+            # in extract_resume_for_builder, they are list of dicts.
+            # In embed_resume, projects = extract_projects_from_text(text) -> returns List[str]
+            # experience_entries = extract_experience_data(text) -> experience_entries is List[str] (from extract_experience_from_text)
+            
+            # extract_certifications_from_text returns List[dict] currently!
+            # Let's check extract_certifications_from_text definition again.
+            # Yes, it returns List[dict] with title, description, date.
+            
+            # BUT extract_projects_from_text returns List[str].
+            # extract_experience_from_text returns List[str].
+            
+            # The DB column for projects/experience might be text[] (array of strings).
+            # If certifications is also text[], we need to convert dicts to strings.
+            # If it is JSONB, we can store dicts.
+            
+            # Given that extract_projects_from_text returns strings, and those are saved to "projects",
+            # it is highly likely the DB expects strings for these lists.
+            # So I should format certifications as strings.
+            
+            cert_strings = []
+            for cert in certifications:
+                c_str = cert["title"]
+                if cert.get("date"):
+                    c_str += f" ({cert['date']})"
+                cert_strings.append(c_str)
+            
+            update_data["certifications"] = cert_strings
+            
+        except Exception as e:
+            print("Certification extraction failed:", e)
+            # Don't fail the whole request
+            pass
 
         response = supabase.table("students").update(
             update_data
@@ -1439,32 +1739,117 @@ async def embed_resume(
 @app.post("/search-students/")
 async def search_students(request: Request):
     data = await request.json()
-    query = data.get("query")
-    if not query:
-        return JSONResponse({"error": "No query provided"}, status_code=400)
+    query = data.get("query", "")
+    skills = data.get("skills", [])
+    
+    combined_results = {}
+    
+    # 1. Vector Search (Semantic)
+    if query:
+        try:
+            # Get embedding from Ollama
+            payload = {"model": OLLAMA_MODEL, "prompt": query}
+            async with httpx.AsyncClient() as client:
+                ollama_resp = await client.post(OLLAMA_URL, json=payload)
+                if ollama_resp.status_code == 200:
+                    embedding = ollama_resp.json()["embedding"]
+                    
+                    # Search by embedding
+                    response = supabase.rpc(
+                        "match_students_by_embedding",
+                        {"query_embedding": embedding, "match_count": 50}
+                    ).execute()
+                    
+                    for row in response.data:
+                        row['match_source'] = 'vector'
+                        combined_results[row['id']] = row
+        except Exception as e:
+            print(f"Vector search failed: {e}")
+            
+    # 2. Text Search (Exact/Partial Name or Dept)
+    if query:
+        try:
+            # Search by name or department
+            text_response = supabase.table("students").select("*").or_(f"full_name.ilike.%{query}%,department.ilike.%{query}%").limit(20).execute()
+            
+            for row in text_response.data:
+                # Add similarity score if missing (treat exact string match as high relevance)
+                if row['id'] not in combined_results:
+                    row['similarity'] = 1.0
+                    row['match_source'] = 'text'
+                    combined_results[row['id']] = row
+                else:
+                    # Boost score if found in both
+                    combined_results[row['id']]['similarity'] = max(combined_results[row['id']].get('similarity', 0), 1.0)
+                    combined_results[row['id']]['match_source'] = 'hybrid'
+        except Exception as e:
+             print(f"Text search failed: {e}")
 
-    # 1. Get embedding from Ollama (not Groq)
-    payload = {"model": OLLAMA_MODEL, "prompt": query}
-    async with httpx.AsyncClient() as client:
-        ollama_resp = await client.post(OLLAMA_URL, json=payload)
-        ollama_resp.raise_for_status()
-        embedding = ollama_resp.json()["embedding"]
+    # 3. Skill Filter (Exact Skill Match)
+    if skills and len(skills) > 0:
+        try:
+            # Only exact matches for filtered skills
+            # Assuming 'skills' column is a text array or list of strings
+            # .contains() works for arrays to check if all values are present
+            # result must contain ALL filtered skills
+            skill_response = supabase.table("students").select("*").contains("skills", skills).limit(50).execute()
+            
+            # Since this is a filter, strictly we should ONLY return these? 
+            # Or mix them in? 
+            # If user selected skills, they usually EXPECT displayed results to have those skills.
+            # So we should probably INTERSECT or Filter existing results, 
+            # BUT the user might also want "Similiar" matches.
+            # Let's prioritize strict skill matches but keep others at lower rank?
+            # User request: "Searching isnt AI powered and also not accurate"
+            # If I select "Python", I expect people with Python.
+            
+            # Let's filter the COMBINED results to only those having the skills if skills are present?
+            # Or just boost them? 
+            # Let's take the approach of "Show Skill Matches First" + "Others if they match semantically".
+            
+            # Additional strategy: If we have skill candidates not yet in results (e.g. didn't match vector query well), add them.
+            for row in skill_response.data:
+                 if row['id'] not in combined_results:
+                    # Calculate a base score if no query was present, or lower if query was present but vector missed it
+                    row['similarity'] = 0.9 # High score for explicit filter match
+                    row['match_source'] = 'skill'
+                    combined_results[row['id']] = row
+                 else:
+                    # Boost existing
+                    combined_results[row['id']]['similarity'] = max(combined_results[row['id']].get('similarity', 0), 0.95)
+                    combined_results[row['id']]['match_source'] = 'hybrid_skill'
 
-    # 2. Vector search in Supabase
+            # Opt-in to strict filtering?
+            # If skills are provided, remove candidates that DON'T have the skills?
+            # This is safer for "Accuracy".
+            filtered_results = {}
+            for sid, row in combined_results.items():
+                student_skills = [s.lower() for s in (row.get('skills') or [])]
+                required = [s.lower() for s in skills]
+                # Check if all required skills are present
+                if all(req in student_skills for req in required):
+                    filtered_results[sid] = row
+            
+            # Update combined_results to only filtered ones if we want strict filtering
+            # Let's use filtered_results to replace combined_results if skills are chosen.
+            # This ensures "Accuracy" - if I filter by Python, don't show me Java devs.
+            combined_results = filtered_results
+
+        except Exception as e:
+            print(f"Skill search failed: {e}")
+
+    # Convert to list and sort
+    results_list = list(combined_results.values())
+    
+    # Sort by similarity descending (ensure type safety)
     try:
-        response = supabase.rpc(
-            "match_students_by_embedding",
-            {"query_embedding": embedding, "match_count": 5}
-        ).execute()
-        results = response.data
+        results_list.sort(key=lambda x: float(x.get('similarity', 0)), reverse=True)
     except Exception as e:
-        print("Supabase RPC error:", e)
-        return JSONResponse({"error": str(e)}, status_code=500)
-
-    print("Query embedding:", embedding)
-    print("Supabase vector search results:", results)
-
-    return JSONResponse({"results": results})
+        print(f"Sorting error: {e}")
+        # Fallback sort
+        results_list.sort(key=lambda x: str(x.get('similarity', 0)), reverse=True)
+    
+    return JSONResponse({"results": results_list[:50]})
 
 # Helper to get file path from Supabase URL
 def get_file_path_from_supabase_url(url: str) -> str | None:

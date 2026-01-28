@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +7,7 @@ import { useStudentsSearch } from '@/hooks/useStudentsSearch';
 import { useToast } from '@/hooks/use-toast';
 import StudentCard from '@/components/StudentCard';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useSearchParams } from 'react-router-dom';
 
 interface SearchSessionProps {
   id: string;
@@ -27,14 +28,81 @@ export const StudentSearch = ({
   activeSessions = [],
   onSessionSelect
 }: StudentSearchProps) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Initialize state logic:
+  // 1. URL Params (Primary)
+  // 2. LocalStorage (Secondary - for persistence across navigation)
+  const getInitialState = () => {
+    const urlQ = searchParams.get('q');
+    const urlSkills = searchParams.get('skills');
+
+    if (urlQ || urlSkills) {
+      return {
+        q: urlQ || '',
+        skills: urlSkills ? urlSkills.split(',') : []
+      };
+    }
+
+    // Fallback to localStorage
+    try {
+      const saved = localStorage.getItem('lastStudentSearch');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error("Failed to parse saved search", e);
+    }
+
+    return { q: '', skills: [] };
+  };
+
+  const initialState = getInitialState();
+
+  const [searchQuery, setSearchQuery] = useState(initialState.q);
+  const [selectedSkills, setSelectedSkills] = useState<string[]>(initialState.skills);
+
   const [skillInput, setSkillInput] = useState('');
   const [shortlistedCandidates, setShortlistedCandidates] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
   const { toast } = useToast();
   const { data: searchResults, refetch: performSearch } = useStudentsSearch(searchQuery, selectedSkills);
+
+  // Sync state to URL and LocalStorage on mount/update
+  useEffect(() => {
+    // If we restored from localStorage but URL was empty, update URL to match
+    const urlQ = searchParams.get('q');
+    const urlSkills = searchParams.get('skills');
+
+    // Only update if there is a discrepancy and we actually have state to restore
+    // This prevents clearing the URL if it was intentionally empty, 
+    // BUT user wants persistence. So we assume "restore intent".
+    const hasState = searchQuery || selectedSkills.length > 0;
+    const urlMatches = urlQ === searchQuery && (urlSkills === (selectedSkills.join(',') || null) || (!urlSkills && selectedSkills.length === 0));
+
+    if (hasState && !urlMatches) {
+      updateParams(searchQuery, selectedSkills);
+    }
+
+    // Auto-search if we have data (either from URL or restored from LS)
+    if (hasState) {
+      performSearch();
+    }
+  }, []); // Run once on mount to handle restoration
+
+  const updateParams = (query: string, skills: string[]) => {
+    const params: any = {};
+    if (query) params.q = query;
+    if (skills.length > 0) params.skills = skills.join(',');
+    setSearchParams(params);
+
+    // Save to localStorage
+    localStorage.setItem('lastStudentSearch', JSON.stringify({
+      q: query,
+      skills: skills
+    }));
+  };
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,6 +113,8 @@ export const StudentSearch = ({
       });
       return;
     }
+
+    updateParams(searchQuery, selectedSkills); // Update URL on search
 
     setIsSearching(true);
     try {
@@ -59,14 +129,22 @@ export const StudentSearch = ({
       e.preventDefault();
       const newSkill = skillInput.trim();
       if (!selectedSkills.includes(newSkill)) {
-        setSelectedSkills([...selectedSkills, newSkill]);
+        const newSkills = [...selectedSkills, newSkill];
+        setSelectedSkills(newSkills);
+        // Optional: Update params immediately for skills, or wait for Search button?
+        // Let's wait for Search button to be consistent with text input, 
+        // OR update immediately because skills are discrete filters. 
+        // Given the requirement "state wont be svaing", immediate update is safer for "add skill -> navigate -> back".
+        updateParams(searchQuery, newSkills);
       }
       setSkillInput('');
     }
   };
 
   const removeSkill = (skillToRemove: string) => {
-    setSelectedSkills(selectedSkills.filter(skill => skill !== skillToRemove));
+    const newSkills = selectedSkills.filter(skill => skill !== skillToRemove);
+    setSelectedSkills(newSkills);
+    updateParams(searchQuery, newSkills);
   };
 
   const handleShortlistToggle = (studentId: string) => {

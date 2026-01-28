@@ -13,6 +13,7 @@ interface SearchResultStudent {
   matchScore: number; // Assuming similarity is mapped to matchScore
   ats_score?: number; // Added ats_score
   has_internship?: boolean; // Added has_internship
+  phone?: string; // Added phone number
   // Add other fields you might need from the search results
 }
 
@@ -46,6 +47,7 @@ export const useStudentsSearch = (searchQuery?: string, selectedSkills: string[]
         matchScore: student.similarity ? Math.round(student.similarity * 100) : 0,
         ats_score: student.ats_score, // Map ats_score
         has_internship: student.has_internship, // Map has_internship
+        phone: student.phone || student.resume_form_data?.personal?.phone || null,
       }));
     },
     enabled: false, // Only run when explicitly called

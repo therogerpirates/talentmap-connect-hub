@@ -62,6 +62,7 @@ const NewRegister = () => {
         email: formData.email,
         password: formData.password,
         options: {
+          emailRedirectTo: `${window.location.origin}/login`,
           data: {
             full_name: formData.fullName,
             role: selectedRole
@@ -69,10 +70,63 @@ const NewRegister = () => {
         }
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        console.error("SignUp Error Details:", authError);
+        throw authError;
+      }
+
+      console.log("SignUp Response:", authData);
 
       if (authData.user) {
         console.log('User created successfully:', authData.user.id);
+
+        // Check if session exists (if not, email verification is likely required)
+        if (!authData.session) {
+          toast({
+            title: "Account Created - Verification Required",
+            description: "Please check your email to verify your account before logging in.",
+          });
+          navigate('/login');
+          return;
+        }
+
+        // If we have a session, try to create the profile manually if the trigger failed
+        if (selectedRole === 'student') {
+          const { error: profileError } = await supabase
+            .from('students')
+            .insert([
+              {
+                id: authData.user.id,
+                full_name: formData.fullName,
+                email: formData.email,
+                created_at: new Date().toISOString()
+              }
+            ]);
+
+          if (profileError) {
+            console.error("Manual profile creation failed:", profileError);
+            // Don't block flow, maybe trigger worked?
+          } else {
+            console.log("Manual student profile creation successful");
+          }
+        } else if (selectedRole === 'admin') {
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert([
+              {
+                id: authData.user.id,
+                full_name: formData.fullName,
+                email: formData.email,
+                updated_at: new Date().toISOString()
+              }
+            ]);
+
+          if (profileError) {
+            console.error("Manual recruiter profile creation failed:", profileError);
+          } else {
+            console.log("Manual recruiter profile creation successful");
+          }
+        }
 
         toast({
           title: "Success!",
@@ -81,12 +135,15 @@ const NewRegister = () => {
 
         // Redirect based on role
         navigate(selectedRole === 'admin' ? '/admin-dashboard' : '/student-details');
+      } else {
+        console.warn("SignUp returned no user and no error");
+        throw new Error("Registration failed unexpectedly. Please try again.");
       }
     } catch (error: any) {
-      console.error('Registration error:', error);
+      console.error('Registration catch error:', error);
       toast({
-        title: "Error",
-        description: error.message || "Something went wrong",
+        title: "Registration Failed",
+        description: error.message || "Something went wrong during registration.",
         variant: "destructive"
       });
     } finally {

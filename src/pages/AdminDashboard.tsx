@@ -85,6 +85,7 @@ const AdminDashboard = () => {
 
   const activeSessions = sessions?.filter(s => s.status === 'active') || [];
   const recentSessions = sessions?.slice(0, 6) || [];
+  const totalSessions = sessions?.length || 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 relative overflow-hidden">
@@ -178,7 +179,13 @@ const AdminDashboard = () => {
                 <div className="flex items-center space-x-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-full border border-blue-100 dark:border-blue-800/50">
                   <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
                   <span className="text-sm font-medium">
-                    {activeSessions.length} active sessions
+                    {activeSessions.length} Active Sessions
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-full border border-blue-100 dark:border-blue-800/50">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                  <span className="text-sm font-medium">
+                    {totalSessions} Total Sessions
                   </span>
                 </div>
 
@@ -194,9 +201,9 @@ const AdminDashboard = () => {
           </div>
 
           {/* Dashboard Stats */}
-          <div className="mb-12 slide-in-left" style={{ animationDelay: '0.2s' }}>
+          {/* <div className="mb-12 slide-in-left" style={{ animationDelay: '0.2s' }}>
             <DashboardStats sessions={sessions} />
-          </div>
+          </div> */}
 
           {/* Main Content Tabs */}
           <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">

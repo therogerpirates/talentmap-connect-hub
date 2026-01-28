@@ -11,7 +11,7 @@ const Index = () => {
   return (
     <Layout>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-colors duration-300 relative">
-        
+
         {/* Hero Section */}
         <section className="container mx-auto px-4 py-16 text-center">
           <div className="max-w-4xl mx-auto">
@@ -19,10 +19,10 @@ const Index = () => {
               Connect Students with Opportunities
             </h1>
             <p className="text-xl text-gray-600 dark:text-gray-300 mb-12 leading-relaxed transition-colors duration-300">
-              TalentMap is the premier platform that bridges the gap between talented students and 
+              TalentMap is the premier platform that bridges the gap between talented students and
               organizations seeking fresh perspectives. Discover, connect, and grow together.
             </p>
-            
+
             <div className="grid md:grid-cols-2 gap-8 mt-16">
               {/* Student Card */}
               <TitledCard containerHeight="100%" containerWidth="100%">
@@ -39,7 +39,7 @@ const Index = () => {
                       <li className="text-gray-700 dark:text-gray-300">Upload your resume</li>
                       <li className="text-gray-700 dark:text-gray-300">Get discovered by recruiters</li>
                     </ul>
-                    <Link to="/new-register">
+                    <Link to="/register?role=student">
                       <Button size="lg" className="w-full bg-black dark:bg-white text-white dark:text-black">
                         Join as Student
                       </Button>
@@ -64,7 +64,7 @@ const Index = () => {
                       <li className="text-gray-700 dark:text-gray-300">Ai-powered Matching</li>
                       <li className="text-gray-700 dark:text-gray-300">Access to Top Talent</li>
                     </ul>
-                    <Link to="/new-register">
+                    <Link to="/register?role=admin">
                       <Button size="lg" className="w-full bg-black dark:bg-white text-white dark:text-black">
                         Join as Recruiter
                       </Button>
@@ -83,11 +83,11 @@ const Index = () => {
             <div className="text-center mb-16">
               <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4 transition-colors duration-300">Why Choose TalentMap?</h2>
               <p className="text-gray-600 dark:text-gray-300 max-w-2xl mx-auto transition-colors duration-300">
-                Our platform combines cutting-edge technology with intuitive design to create 
+                Our platform combines cutting-edge technology with intuitive design to create
                 meaningful connections between students and opportunities.
               </p>
             </div>
-            
+
             <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
               <div className="text-center group">
                 <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-gray-200 dark:group-hover:bg-gray-600 transition-colors duration-300">
@@ -98,7 +98,7 @@ const Index = () => {
                   Simple, intuitive interface for students to showcase their skills and experience.
                 </p>
               </div>
-              
+
               <div className="text-center group">
                 <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-gray-200 dark:group-hover:bg-gray-600 transition-colors duration-300">
                   <Search className="w-8 h-8 text-black dark:text-white transition-colors duration-300" />

@@ -22,7 +22,7 @@ export function Layout({ children }: LayoutProps) {
             <Link to="/login">
               <Button variant="ghost" className="transition-colors duration-300">Login</Button>
             </Link>
-            <Link to="/new-register">
+            <Link to="/register">
               <Button className="transition-colors duration-300">Get Started</Button>
             </Link>
             <ThemeToggle />

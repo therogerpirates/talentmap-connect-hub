@@ -14,11 +14,13 @@ import ATSScoreCircle from '@/components/ATSScoreCircle';
 
 interface ExtractedData {
   skills: string[];
+  skillSections?: { heading: string; items: string[] }[];
   projects: string[];
   experience: string[];
   cgpa: string;
   tenthMark: string;
   twelfthMark: string;
+  certifications: string[];
 }
 
 const ResumeScanner = () => {
@@ -29,11 +31,13 @@ const ResumeScanner = () => {
 
   const [extractedData, setExtractedData] = useState<ExtractedData>({
     skills: [],
+    skillSections: [],
     projects: [],
     experience: [],
     cgpa: '',
     tenthMark: '',
-    twelfthMark: ''
+    twelfthMark: '',
+    certifications: []
   });
 
   const [hasResume, setHasResume] = useState(false);
@@ -59,25 +63,36 @@ const ResumeScanner = () => {
     if (studentData) {
       setHasResume(!!studentData.resume_url);
 
+      const resumeFormData = (studentData as any).resume_form_data;
+
       setExtractedData({
         skills: Array.isArray(studentData.skills) ? studentData.skills.map(String) : [],
+        skillSections: resumeFormData?.skillSections || [],
         projects: convertToStringArray(studentData.projects as any[]),
         experience: convertToStringArray(studentData.experience as any[]),
         cgpa: studentData.gpa || '',
         tenthMark: (studentData as any).tenth_percentage?.toString() || '',
-        twelfthMark: (studentData as any).twelfth_percentage?.toString() || ''
+        twelfthMark: (studentData as any).twelfth_percentage?.toString() || '',
+        certifications: Array.isArray(studentData.certifications) ? studentData.certifications.map(String) : []
       });
 
       const score = studentData.ats_score || 0;
       setAtsScore(score);
 
-      // Simple improvements generation (or use backend provided)
-      const msgs = [];
-      if (score < 60) msgs.push("Resume content is sparse. Add more details.");
-      if ((studentData.skills?.length || 0) < 5) msgs.push("Add more technical skills.");
-      if (!studentData.summary) msgs.push("Add a professional summary.");
-      if (msgs.length === 0) msgs.push("Lorem ipsum dolor sit amet, consectetur.");
-      setImprovements(msgs);
+      const aiSuggestions = (studentData as any).resume_form_data?.suggestions;
+
+      if (Array.isArray(aiSuggestions) && aiSuggestions.length > 0) {
+        setImprovements(aiSuggestions);
+      } else {
+        // Fallback improvements generation
+        const msgs = [];
+        if (score < 60) msgs.push("Resume content is sparse. Add more details.");
+        if ((studentData.skills?.length || 0) < 5) msgs.push("Add more technical skills.");
+        if (!studentData.summary) msgs.push("Add a professional summary.");
+        // Removed generic Lorem Ipsum fallback to cleaner emptiness
+        if (msgs.length === 0) msgs.push("Resume looks good! Keep adding new achievements.");
+        setImprovements(msgs);
+      }
     }
   }, [studentData]);
 
@@ -166,15 +181,33 @@ const ResumeScanner = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                 <div>
                   <h4 className="font-semibold text-lg mb-4 text-slate-800 dark:text-slate-200">Skills</h4>
-                  <div className="flex flex-wrap gap-3">
-                    {extractedData.skills.length > 0 ? (
-                      extractedData.skills.map((skill, i) => (
-                        <Badge key={i} variant="secondary" className="bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-full px-4 py-1 font-normal shadow-sm hover:bg-slate-50">
-                          {skill}
-                        </Badge>
-                      ))
-                    ) : <span className="text-slate-400 text-sm">No skills found</span>}
-                  </div>
+
+                  {extractedData.skillSections && extractedData.skillSections.length > 0 ? (
+                    <div className="space-y-5">
+                      {extractedData.skillSections.map((section, idx) => (
+                        <div key={idx}>
+                          <h5 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wide text-xs">{section.heading}</h5>
+                          <div className="flex flex-wrap gap-2">
+                            {section.items.map((skill, i) => (
+                              <Badge key={i} variant="secondary" className="bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-full px-3 py-1 font-normal shadow-sm hover:bg-slate-50">
+                                {skill}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-3">
+                      {extractedData.skills.length > 0 ? (
+                        extractedData.skills.map((skill, i) => (
+                          <Badge key={i} variant="secondary" className="bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-full px-4 py-1 font-normal shadow-sm hover:bg-slate-50">
+                            {skill}
+                          </Badge>
+                        ))
+                      ) : <span className="text-slate-400 text-sm">No skills found</span>}
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -198,6 +231,21 @@ const ResumeScanner = () => {
                         </ul>
                       ) : (
                         <span className="text-slate-400 text-sm italic">No projects found</span>
+                      )}
+                    </div>
+                    <div>
+                      <h5 className="text-slate-600 dark:text-slate-400 mb-2">Certifications:</h5>
+                      {extractedData.certifications.length > 0 ? (
+                        <ul className="space-y-3">
+                          {extractedData.certifications.slice(0, 4).map((c, i) => (
+                            <li key={i} className="flex items-start text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                              <span className="mr-2 mt-1.5 w-1.5 h-1.5 bg-green-500 rounded-full shrink-0"></span>
+                              <span>{c}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span className="text-slate-400 text-sm italic">No certifications found</span>
                       )}
                     </div>
                   </div>

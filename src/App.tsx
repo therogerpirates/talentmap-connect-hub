@@ -35,68 +35,68 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/register" element={<Register />} />
-              <Route path="/new-register" element={<NewRegister />} />
-              <Route path="/login" element={<Login />} />
+              <Route path="/new-register" element={<Register />} />
+              <Route path="/login" element={<Register />} />
               <Route path="/reset-password" element={<ResetPassword />} />
-              <Route 
-                path="/student-dashboard" 
+              <Route
+                path="/student-dashboard"
                 element={
                   <ProtectedRoute role="student">
                     <StudentDashboard />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/resume-scanner" 
+              <Route
+                path="/resume-scanner"
                 element={
                   <ProtectedRoute role="student">
                     <ResumeScanner />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/student-details" 
+              <Route
+                path="/student-details"
                 element={
                   <ProtectedRoute role="student">
                     <StudentDetails />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/admin-dashboard" 
+              <Route
+                path="/admin-dashboard"
                 element={
                   <ProtectedRoute role="admin">
                     <AdminDashboard />
                   </ProtectedRoute>
-                } 
+                }
               />
               <Route path="/profile" element={<ProfilePage />} />
-              <Route 
-                path="/admin/students/:studentId" 
+              <Route
+                path="/admin/students/:studentId"
                 element={
                   <ProtectedRoute role="admin">
                     <AdminStudentDetail />
                   </ProtectedRoute>
                 }
               />
-              <Route 
-                path="/create-session" 
+              <Route
+                path="/create-session"
                 element={
                   <ProtectedRoute role="admin">
                     <CreateSession />
                   </ProtectedRoute>
                 }
               />
-              <Route 
-                path="/sessions/:sessionId" 
+              <Route
+                path="/sessions/:sessionId"
                 element={
                   <ProtectedRoute role="admin">
                     <SessionDetail />
                   </ProtectedRoute>
                 }
               />
-              <Route 
-                path="/resume-builder" 
+              <Route
+                path="/resume-builder"
                 element={
                   <ProtectedRoute role="student">
                     <ResumeBuilder />

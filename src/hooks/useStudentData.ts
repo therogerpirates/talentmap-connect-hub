@@ -17,16 +17,17 @@ interface StudentData {
   resume_url?: string;
   ats_score?: number;
   has_internship?: boolean;
+  certifications?: string[];
 }
 
 export const useStudentData = () => {
   const { user } = useAuth();
-  
+
   return useQuery({
     queryKey: ['student-data', user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
-      
+
       const { data, error } = await supabase
         .from('students')
         .select('*')
